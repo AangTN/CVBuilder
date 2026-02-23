@@ -1,0 +1,224 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model auth_providers {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id       String        @db.Uuid
+  provider      provider_type
+  provider_id   String        @db.VarChar
+  password_hash String?       @db.VarChar
+  created_at    DateTime?     @default(now()) @db.Timestamptz(6)
+  users         users         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([provider, provider_id], map: "auth_providers_provider_provider_id_idx")
+}
+
+model credit_usage_log {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id       String    @db.Uuid
+  cv_id         String    @db.Uuid
+  credits_spent Int
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+  cvs           cvs       @relation(fields: [cv_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users         users     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model cv_section_items {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  section_id  String      @db.Uuid
+  content     Json
+  position    Int?        @default(0)
+  created_at  DateTime?   @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime?   @default(now()) @db.Timestamptz(6)
+  cv_sections cv_sections @relation(fields: [section_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model cv_sections {
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cv_id            String             @db.Uuid
+  section_type     section_type_enum
+  title            String             @db.VarChar
+  is_visible       Boolean?           @default(true)
+  created_at       DateTime?          @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime?          @default(now()) @db.Timestamptz(6)
+  cv_section_items cv_section_items[]
+  cvs              cvs                @relation(fields: [cv_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model cvs {
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String?            @db.Uuid
+  template_id      String             @db.Uuid
+  guest_email      String?            @db.VarChar
+  language         String?            @default("vi") @db.VarChar
+  settings         Json?              @default("{}")
+  status           cv_status?         @default(active)
+  download_token   String?            @unique @db.VarChar
+  created_at       DateTime?          @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime?          @default(now()) @db.Timestamptz(6)
+  name             String?            @db.VarChar
+  cv_exports       Boolean            @default(false)
+  credit_usage_log credit_usage_log[]
+  cv_sections      cv_sections[]
+  templates        templates          @relation(fields: [template_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users            users?             @relation(fields: [user_id], references: [id], onUpdate: NoAction)
+  transactions     transactions[]
+}
+
+model templates {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String    @db.VarChar
+  thumbnail_url String?
+  config        Json?     @default("{}")
+  credit_cost   Int?      @default(10)
+  is_premium    Boolean?  @default(false)
+  is_active     Boolean?  @default(true)
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+  cvs           cvs[]
+}
+
+model transactions {
+  id                      String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                 String?             @db.Uuid
+  cv_id                   String?             @db.Uuid
+  amount                  Decimal             @db.Decimal
+  credits_awarded         Int?                @default(0)
+  type                    transaction_type
+  status                  transaction_status? @default(pending)
+  provider_transaction_id String?             @db.VarChar
+  created_at              DateTime?           @default(now()) @db.Timestamptz(6)
+  cvs                     cvs?                @relation(fields: [cv_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users                   users?              @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model users {
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  primary_email    String             @unique @db.VarChar
+  full_name        String?            @db.VarChar
+  avatar_url       String?
+  balance          Int?               @default(0)
+  is_active        Boolean?           @default(true)
+  created_at       DateTime?          @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime?          @default(now()) @db.Timestamptz(6)
+  role             String?            @db.VarChar
+  auth_providers   auth_providers[]
+  blog_posts       blog_posts[]
+  credit_usage_log credit_usage_log[]
+  cvs              cvs[]
+  refresh_tokens   refresh_tokens[]
+  transactions     transactions[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model refresh_tokens {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String    @db.Uuid
+  token      String    @unique @db.VarChar
+  expires_at DateTime  @db.Timestamptz(6)
+  is_revoked Boolean?  @default(false)
+  user_agent String?
+  ip_address String?   @db.VarChar(45)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([token])
+}
+
+model blog_categories {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String       @unique @db.VarChar(255)
+  slug        String       @unique @db.VarChar(255)
+  description String?
+  created_at  DateTime?    @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime?    @default(now()) @db.Timestamptz(6)
+  blog_posts  blog_posts[]
+}
+
+model blog_tags {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String           @unique @db.VarChar(100)
+  slug           String           @unique @db.VarChar(100)
+  created_at     DateTime?        @default(now()) @db.Timestamptz(6)
+  blog_post_tags blog_post_tags[]
+}
+
+model blog_posts {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  category_id      String?          @db.Uuid
+  author_id        String           @db.Uuid
+  title            String           @db.VarChar(512)
+  slug             String           @unique @db.VarChar(512)
+  summary          String?
+  content          String
+  thumbnail        String?
+  status           blog_post_status @default(draft)
+  view_count       Int              @default(0)
+  meta_title       String?          @db.VarChar(512)
+  meta_description String?          @db.VarChar(1024)
+  published_at     DateTime?        @db.Timestamptz(6)
+  created_at       DateTime?        @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime?        @default(now()) @db.Timestamptz(6)
+  blog_post_tags   blog_post_tags[]
+  author           users            @relation(fields: [author_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  blog_categories  blog_categories? @relation(fields: [category_id], references: [id], onUpdate: NoAction)
+
+  @@index([slug])
+  @@index([status])
+  @@index([category_id])
+}
+
+model blog_post_tags {
+  post_id    String     @db.Uuid
+  tag_id     String     @db.Uuid
+  blog_posts blog_posts @relation(fields: [post_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  blog_tags  blog_tags  @relation(fields: [tag_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([post_id, tag_id])
+}
+
+enum blog_post_status {
+  draft
+  published
+}
+
+enum cv_status {
+  active
+  deleted
+}
+
+enum provider_type {
+  local
+  google
+  github
+  facebook
+}
+
+enum section_type_enum {
+  header
+  experience
+  education
+  skills
+  projects
+  languages
+  custom
+}
+
+enum transaction_status {
+  pending
+  success
+  failed
+}
+
+enum transaction_type {
+  topup
+  direct_purchase
+}

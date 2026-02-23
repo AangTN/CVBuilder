@@ -1,0 +1,43 @@
+# Root environment files
+.env
+.env.*
+
+# Do not track env example templates containing real keys
+**/.env.example
+
+# Node / JS artifacts
+**/node_modules/
+**/dist/
+**/build/
+**/.next/
+**/coverage/
+**/.turbo/
+**/.cache/
+
+# Logs
+**/*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Runtime uploads/storage
+cv-backend/uploads/**
+!cv-backend/uploads/.gitkeep
+
+# Local Docker overrides
+docker-compose.override.yml
+
+# Optional local test artifacts
+**/playwright-report/
+**/test-results/
+
+# Local database dump files
+cvonline.sql
+cv-backend/cvonline.sql

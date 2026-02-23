@@ -1,0 +1,61 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: cv-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123}
+      POSTGRES_DB: ${POSTGRES_DB:-cvonline}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-cvonline}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./cv-backend
+      dockerfile: Dockerfile
+    container_name: cv-backend
+    restart: unless-stopped
+    env_file:
+      - ./cv-backend/.env
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-123}@db:5432/${POSTGRES_DB:-cvonline}
+      FRONTEND_URL: http://${VPS_IP:-160.250.246.44}:3000
+      FRONTEND_EXPORT_URL: http://frontend:3000
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./cv-backend/uploads:/app/uploads
+
+  frontend:
+    build:
+      context: ./cv-frontend
+      dockerfile: Dockerfile
+    container_name: cv-frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: http://${VPS_IP:-160.250.246.44}:3001
+      NEXT_PUBLIC_SITE_URL: http://${VPS_IP:-160.250.246.44}:3000
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT}
+      NEXT_PUBLIC_GOOGLE_CLIENT: ${GOOGLE_CLIENT}
+      EXPORT_RENDER_KEY: ${EXPORT_RENDER_KEY}
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
