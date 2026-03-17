@@ -124,7 +124,7 @@ export class AiService {
         section_feedback: [
           {
             section:
-              'header|experience|education|skills|projects|languages|custom',
+              'header|experience|education|skills|projects|languages|certifications|custom',
             issue: 'string',
             suggestion: 'string',
           },

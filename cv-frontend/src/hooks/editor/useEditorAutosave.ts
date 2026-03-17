@@ -153,10 +153,6 @@ export function useEditorAutosave({
     };
 
     loadCV();
-
-    return () => {
-      toast.dismiss(RESTORE_TOAST_ID);
-    };
   }, [templateId, resetHistory, setCvData, setIsDraftDirty, draftStorageKey]);
 
   useEffect(() => {

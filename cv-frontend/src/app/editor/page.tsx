@@ -289,7 +289,7 @@ function EditorPageContent() {
       )}
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="w-[45%] border-r border-blue-100 bg-white dark:border-slate-800 dark:bg-background">
+        <div className="w-[55%] border-r border-blue-100 bg-white dark:border-slate-800 dark:bg-background">
           <CVInputPanel
             data={cvData}
             onChange={(data) => {
@@ -299,7 +299,7 @@ function EditorPageContent() {
           />
         </div>
 
-        <div className="w-[55%] bg-slate-50 dark:bg-slate-950">
+        <div className="w-[45%] bg-slate-50 dark:bg-slate-900">
           <CVPreviewPanel data={cvData} TemplateComponent={template.component} />
         </div>
       </div>

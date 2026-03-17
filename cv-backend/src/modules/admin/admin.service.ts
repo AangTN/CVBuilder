@@ -1,10 +1,69 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma.service';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class AdminService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private configService: ConfigService,
+  ) {}
+
+  private getBlogRevalidateConfig() {
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_EXPORT_URL') ||
+      this.configService.get<string>('FRONTEND_URL');
+    const secret = this.configService.get<string>('REVALIDATE_SECRET');
+
+    if (!frontendUrl || !secret) {
+      return null;
+    }
+
+    const baseUrl = frontendUrl.replace(/\/+$/, '');
+
+    return {
+      endpoint: `${baseUrl}/api/revalidate/blog`,
+      secret,
+    };
+  }
+
+  private async revalidateBlogCache(
+    slugs: Array<string | null | undefined> = [],
+  ) {
+    const config = this.getBlogRevalidateConfig();
+    if (!config) {
+      return;
+    }
+
+    const normalizedSlugs = Array.from(
+      new Set(
+        slugs
+          .map((slug) => slug?.trim().toLowerCase())
+          .filter((slug): slug is string => Boolean(slug)),
+      ),
+    );
+
+    try {
+      const response = await fetch(config.endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-revalidate-secret': config.secret,
+        },
+        body: JSON.stringify({ slugs: normalizedSlugs }),
+      });
+
+      if (!response.ok) {
+        const detail = await response.text();
+        console.warn(
+          `[cache] Failed to revalidate blog cache: ${response.status} ${detail}`,
+        );
+      }
+    } catch (error) {
+      console.warn('[cache] Failed to call blog revalidation endpoint', error);
+    }
+  }
 
   private startOfDay(date: Date) {
     return new Date(
@@ -393,13 +452,17 @@ export class AdminService {
       },
     });
 
-    return {
+    const payload = {
       id: category.id,
       name: category.name,
       slug: category.slug,
       description: category.description,
       createdAt: category.created_at,
     };
+
+    await this.revalidateBlogCache();
+
+    return payload;
   }
 
   async updateBlogCategory(
@@ -411,17 +474,24 @@ export class AdminService {
       data: dto,
     });
 
-    return {
+    const payload = {
       id: category.id,
       name: category.name,
       slug: category.slug,
       description: category.description,
       createdAt: category.created_at,
     };
+
+    await this.revalidateBlogCache();
+
+    return payload;
   }
 
   async deleteBlogCategory(id: string) {
     await this.prisma.blog_categories.delete({ where: { id } });
+
+    await this.revalidateBlogCache();
+
     return { success: true };
   }
 
@@ -565,13 +635,17 @@ export class AdminService {
       },
     });
 
-    return {
+    const payload = {
       id: post.id,
       title: post.title,
       slug: post.slug,
       status: post.status,
       createdAt: post.created_at,
     };
+
+    await this.revalidateBlogCache([post.slug]);
+
+    return payload;
   }
 
   async updateBlogPost(
@@ -589,6 +663,11 @@ export class AdminService {
       tagIds?: string[];
     },
   ) {
+    const existingPost = await this.prisma.blog_posts.findUnique({
+      where: { id },
+      select: { slug: true },
+    });
+
     const data: Prisma.blog_postsUpdateInput = {};
     if (dto.title !== undefined) data.title = dto.title;
     if (dto.slug !== undefined) data.slug = dto.slug;
@@ -615,6 +694,9 @@ export class AdminService {
     }
 
     const post = await this.prisma.blog_posts.update({ where: { id }, data });
+
+    await this.revalidateBlogCache([existingPost?.slug, post.slug]);
+
     return {
       id: post.id,
       title: post.title,
@@ -625,7 +707,15 @@ export class AdminService {
   }
 
   async deleteBlogPost(id: string) {
+    const existingPost = await this.prisma.blog_posts.findUnique({
+      where: { id },
+      select: { slug: true },
+    });
+
     await this.prisma.blog_posts.delete({ where: { id } });
+
+    await this.revalidateBlogCache([existingPost?.slug]);
+
     return { success: true };
   }
 
@@ -649,6 +739,9 @@ export class AdminService {
     const tag = await this.prisma.blog_tags.create({
       data: { name: dto.name, slug: dto.slug },
     });
+
+    await this.revalidateBlogCache();
+
     return {
       id: tag.id,
       name: tag.name,
@@ -663,6 +756,9 @@ export class AdminService {
       where: { id },
       data: dto,
     });
+
+    await this.revalidateBlogCache();
+
     return {
       id: tag.id,
       name: tag.name,
@@ -673,6 +769,9 @@ export class AdminService {
 
   async deleteBlogTag(id: string) {
     await this.prisma.blog_tags.delete({ where: { id } });
+
+    await this.revalidateBlogCache();
+
     return { success: true };
   }
 }

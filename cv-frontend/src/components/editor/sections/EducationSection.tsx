@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { MonthYearInput } from '@/components/editor/inputs/MonthYearInput';
 import { Plus, Trash2, X, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import { Language, getSectionTitle } from '@/lib/sectionTitles';
@@ -129,10 +130,10 @@ export function EducationSection({ section, language, onUpdate, onToggleVisibili
   };
 
   return (
-    <AccordionItem value="education">
+    <AccordionItem value="education" className="rounded-xl border-2 border-gray-200 bg-white px-1 dark:border-slate-700 dark:bg-card">
       <div className="flex items-center justify-between pr-4">
         <AccordionTrigger 
-          className={`text-lg font-semibold flex-1 ${!section.is_visible ? 'opacity-50' : ''}`}
+          className={`flex-1 px-4 py-4 text-lg font-semibold hover:no-underline ${!section.is_visible ? 'opacity-50' : ''}`}
         >
           {getSectionTitle('education', language)} ({section.items.length})
         </AccordionTrigger>
@@ -148,10 +149,10 @@ export function EducationSection({ section, language, onUpdate, onToggleVisibili
           {section.is_visible !== false ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
         </Button>
       </div>
-      <AccordionContent>
+      <AccordionContent className="px-4 pb-4">
         <div className="space-y-4 pt-4">
           {section.items.map((item, index) => (
-            <div key={item.id} className="relative rounded-lg border bg-muted/50 p-4">
+            <div key={item.id} className="relative rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/60">
               <div className="space-y-3">
                 <div className="flex items-start justify-between">
                   <h4 className="font-semibold">{text.itemTitle} #{index + 1}</h4>
@@ -177,7 +178,7 @@ export function EducationSection({ section, language, onUpdate, onToggleVisibili
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div>
                     <Label>{getFieldLabel('education', 'degree', language)} *</Label>
                     <Input
@@ -205,22 +206,24 @@ export function EducationSection({ section, language, onUpdate, onToggleVisibili
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div>
                     <Label>{getFieldLabel('education', 'start_date', language)}</Label>
-                    <Input
-                      type="month"
+                    <MonthYearInput
+                      language={language}
                       value={getStringContent(item.content, 'start_date')}
-                      onChange={(e) => updateItemField(index, 'start_date', e.target.value)}
+                      onChange={(value) => updateItemField(index, 'start_date', value)}
+                      placeholder={getFieldPlaceholder('education', 'start_date', language)}
                     />
                   </div>
                   <div>
                     <Label>{getFieldLabel('education', 'end_date', language)}</Label>
-                    <Input
-                      type="month"
+                    <MonthYearInput
+                      language={language}
                       value={getStringContent(item.content, 'end_date')}
-                      onChange={(e) => updateItemField(index, 'end_date', e.target.value)}
+                      onChange={(value) => updateItemField(index, 'end_date', value)}
                       disabled={getBooleanContent(item.content, 'is_current')}
+                      placeholder={getFieldPlaceholder('education', 'end_date', language)}
                     />
                   </div>
                 </div>
@@ -233,7 +236,7 @@ export function EducationSection({ section, language, onUpdate, onToggleVisibili
                   <Label className="cursor-pointer">{getFieldLabel('education', 'is_current', language)}</Label>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div>
                     <Label>{getFieldLabel('education', 'gpa', language)}</Label>
                     <Input
@@ -359,7 +362,17 @@ export function EducationSection({ section, language, onUpdate, onToggleVisibili
               newItems.push({
                 id: `new-${Date.now()}`,
                 section_id: section.id,
-                content: { institution: '', degree: '', field_of_study: '', achievements: [] }
+                content: {
+                  institution: '',
+                  degree: '',
+                  field_of_study: '',
+                  location: '',
+                  start_date: '',
+                  end_date: '',
+                  gpa: '',
+                  description: '',
+                  achievements: [],
+                }
               });
               onUpdate(section.id, { items: newItems });
             }}

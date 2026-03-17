@@ -6,6 +6,7 @@ import {
   SkillContent,
   ProjectContent,
   LanguageContent,
+  CertificationContent,
   CustomContent
 } from '@/lib/types';
 
@@ -195,20 +196,39 @@ export const MODERN_SAMPLE_DATA: CVData = {
     {
       id: '7',
       cv_id: 'sample',
+      section_type: 'certifications',
+      title: 'Certifications',
+      items: [
+        {
+          id: 'cf1',
+          section_id: '7',
+          content: {
+            name: 'Lean Six Sigma Green Belt',
+            issuer: 'IASSC',
+            issue_date: '2024',
+            credential_id: 'LSSGB-IASSC-240118',
+          } as CertificationContent,
+        },
+        {
+          id: 'cf2',
+          section_id: '7',
+          content: {
+            name: 'Certified in Supply Chain Analytics',
+            issuer: 'ASCM',
+            issue_date: '2025',
+          } as CertificationContent,
+        },
+      ],
+    },
+    {
+      id: '8',
+      cv_id: 'sample',
       section_type: 'custom',
       title: 'Additional Information',
       items: [
         {
-          id: 'cu1',
-          section_id: '7',
-          content: { 
-            label: 'Certifications', 
-            value: 'Lean Six Sigma Green Belt (IASSC), Certified in Supply Chain Analytics (2025).' 
-          } as CustomContent,
-        },
-        {
           id: 'cu2',
-          section_id: '7',
+          section_id: '8',
           content: { 
             label: 'Awards', 
             value: 'Operational Excellence Award 2024 - Northline Logistics Group.' 
@@ -381,17 +401,30 @@ export const CLASSIC_SPLIT_SAMPLE_DATA: CVData = {
     {
       id: 'c6',
       cv_id: 'sample',
-      section_type: 'custom',
-      title: 'Reference',
+      section_type: 'certifications',
+      title: 'Certifications',
       items: [
         {
           id: 'cc1',
           section_id: 'c6',
-          content: { label: 'CFA Program', value: 'CFA Level II Candidate (2026) • Advanced Financial Modeling Certificate (CFI).' } as CustomContent,
+          content: {
+            name: 'CFA Program - Level II Candidate',
+            issuer: 'CFA Institute',
+            issue_date: '2026',
+            description: 'Advanced Financial Modeling Certificate (CFI).',
+          } as CertificationContent,
         },
+      ],
+    },
+    {
+      id: 'c7',
+      cv_id: 'sample',
+      section_type: 'custom',
+      title: 'Reference',
+      items: [
         {
           id: 'cc2',
-          section_id: 'c6',
+          section_id: 'c7',
           content: { label: 'Notable Impact', value: 'Delivered forecast accuracy improvement from 82% to 93% in FY2025 planning cycle.' } as CustomContent,
         },
       ],
@@ -520,316 +553,22 @@ export const TECH_TERMINAL_SAMPLE_DATA: CVData = {
         { id: 'tl2', section_id: 't6', content: { name: 'Vietnamese', proficiency: 'Native' } as LanguageContent },
       ],
     },
-  ],
-};
-
-/**
- * Sample data for Electric Gradient template
- */
-export const ELECTRIC_GRADIENT_SAMPLE_DATA: CVData = {
-  template_id: 'b043cc09-d9e3-4579-a08c-c7eaac82b26b',
-  settings: {
-    fontFamily: 'Inter, sans-serif',
-    fontSize: 'medium',
-    primaryColor: '#2563eb',
-    secondaryColor: '#ec4899',
-    labels: {
-      present: 'Present',
-      contact: 'Contact',
-    },
-  },
-  sections: [
     {
-      id: 'eg1',
+      id: 't7',
       cv_id: 'sample',
-      section_type: 'header',
-      title: 'Header',
+      section_type: 'certifications',
+      title: 'Certifications',
       items: [
         {
-          id: 'egh1',
-          section_id: 'eg1',
+          id: 'tc1',
+          section_id: 't7',
           content: {
-            full_name: 'Alex Rivera',
-            title: 'Creative Product Designer',
-            email: 'alex@electric.design',
-            phone: '+1 (555) 332-1199',
-            location: 'New York, NY',
-            linkedin: 'linkedin.com/in/alexrivera',
-            github: 'github.com/alexrivera',
-            website: 'alexrivera.design',
-            photo_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=AlexRivera',
-            summary: 'Designer focused on bold digital experiences with strong conversion outcomes. 6+ years turning product strategy into polished interfaces for SaaS and consumer apps.',
-          } as HeaderContent,
-        },
-      ],
-    },
-    {
-      id: 'eg2',
-      cv_id: 'sample',
-      section_type: 'experience',
-      title: 'Experience',
-      items: [
-        {
-          id: 'ege1',
-          section_id: 'eg2',
-          content: {
-            company: 'Pulse Interactive',
-            role: 'Senior Product Designer',
-            location: 'Remote',
-            start_date: '2022-03',
-            is_current: true,
-            description: '<p>Led redesign of growth funnel and onboarding journey for a B2B analytics product.</p>',
-            highlights: [
-              'Improved activation rate by 28% through UX simplification',
-              'Built design system with 70+ reusable components',
-            ],
-          } as ExperienceContent,
-        },
-        {
-          id: 'ege2',
-          section_id: 'eg2',
-          content: {
-            company: 'Glow Labs',
-            role: 'UI/UX Designer',
-            location: 'Los Angeles, CA',
-            start_date: '2019-01',
-            end_date: '2022-02',
-            description: '<p>Designed mobile-first experiences and collaborated with PM/Engineering to launch 3 major releases.</p>',
-          } as ExperienceContent,
-        },
-      ],
-    },
-    {
-      id: 'eg3',
-      cv_id: 'sample',
-      section_type: 'education',
-      title: 'Education',
-      items: [
-        {
-          id: 'eged1',
-          section_id: 'eg3',
-          content: {
-            institution: 'Parsons School of Design',
-            degree: 'BFA Interaction Design',
-            location: 'New York, NY',
-            start_date: '2014',
-            end_date: '2018',
-          } as EducationContent,
-        },
-      ],
-    },
-    {
-      id: 'eg4',
-      cv_id: 'sample',
-      section_type: 'skills',
-      title: 'Core Skills',
-      items: [
-        { id: 'egs1', section_id: 'eg4', content: { name: 'Figma', level: 'Expert', category: 'Design' } as SkillContent },
-        { id: 'egs2', section_id: 'eg4', content: { name: 'Prototyping', level: 'Advanced', category: 'Design' } as SkillContent },
-        { id: 'egs3', section_id: 'eg4', content: { name: 'Design Systems', level: 'Advanced', category: 'Design Ops' } as SkillContent },
-        { id: 'egs4', section_id: 'eg4', content: { name: 'User Research', level: 'Advanced', category: 'Strategy' } as SkillContent },
-        { id: 'egs5', section_id: 'eg4', content: { name: 'A/B Testing', level: 'Intermediate', category: 'Strategy' } as SkillContent },
-      ],
-    },
-    {
-      id: 'eg5',
-      cv_id: 'sample',
-      section_type: 'projects',
-      title: 'Featured Projects',
-      items: [
-        {
-          id: 'egp1',
-          section_id: 'eg5',
-          content: {
-            name: 'Neon Commerce Suite',
-            role: 'Lead Product Designer',
-            start_date: '2024',
-            end_date: '2025',
-            description: 'Multi-store eCommerce dashboard with configurable widgets, campaign automation, and conversion insights.',
-            technologies: ['Figma', 'React', 'Storybook', 'Mixpanel'],
-          } as ProjectContent,
-        },
-      ],
-    },
-    {
-      id: 'eg6',
-      cv_id: 'sample',
-      section_type: 'languages',
-      title: 'Languages',
-      items: [
-        { id: 'egl1', section_id: 'eg6', content: { name: 'English', proficiency: 'Fluent' } as LanguageContent },
-        { id: 'egl2', section_id: 'eg6', content: { name: 'Spanish', proficiency: 'Professional' } as LanguageContent },
-      ],
-    },
-    {
-      id: 'eg7',
-      cv_id: 'sample',
-      section_type: 'custom',
-      title: 'Highlights',
-      items: [
-        {
-          id: 'egc1',
-          section_id: 'eg7',
-          content: {
-            label: 'Awards',
-            value: 'Top 30 Product Designers 2025 - UX Collective',
-          } as CustomContent,
-        },
-      ],
-    },
-  ],
-};
-
-/**
- * Sample data for Neon Pulse template
- */
-export const NEON_PULSE_SAMPLE_DATA: CVData = {
-  template_id: 'ffa13d75-13e4-47c2-a583-5b988f43650a',
-  settings: {
-    fontFamily: 'Inter, sans-serif',
-    fontSize: 'medium',
-    primaryColor: '#22c55e',
-    secondaryColor: '#ec4899',
-    labels: {
-      present: 'Present',
-      contact: 'Contact',
-    },
-  },
-  sections: [
-    {
-      id: 'np1',
-      cv_id: 'sample',
-      section_type: 'header',
-      title: 'Header',
-      items: [
-        {
-          id: 'nph1',
-          section_id: 'np1',
-          content: {
-            full_name: 'Linh Tran',
-            title: 'Growth Marketing Specialist',
-            email: 'linh@growthpulse.io',
-            phone: '+84 933 112 889',
-            location: 'Da Nang, Vietnam',
-            linkedin: 'linkedin.com/in/linh-growth',
-            website: 'linhgrowth.me',
-            photo_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=LinhTran',
-            summary: 'Growth marketer focused on lifecycle automation, paid channels, and conversion optimization for SaaS and eCommerce brands.',
-          } as HeaderContent,
-        },
-      ],
-    },
-    {
-      id: 'np2',
-      cv_id: 'sample',
-      section_type: 'experience',
-      title: 'Experience',
-      items: [
-        {
-          id: 'npe1',
-          section_id: 'np2',
-          content: {
-            company: 'BrightWave Commerce',
-            role: 'Growth Marketing Specialist',
-            location: 'Remote',
-            start_date: '2023-01',
-            is_current: true,
-            description: '<p>Owned multi-channel demand generation strategy across paid search, email, and affiliate partnerships.</p>',
-            highlights: [
-              'Increased qualified leads by 41% YoY through campaign segmentation',
-              'Reduced CAC by 23% by optimizing landing-page funnels and creative testing',
-            ],
-          } as ExperienceContent,
-        },
-        {
-          id: 'npe2',
-          section_id: 'np2',
-          content: {
-            company: 'VietMarket Agency',
-            role: 'Digital Marketing Executive',
-            location: 'Ho Chi Minh City, Vietnam',
-            start_date: '2020-04',
-            end_date: '2022-12',
-            description: '<p>Executed full-funnel campaigns and coordinated with content/design teams for weekly launch cycles.</p>',
-          } as ExperienceContent,
-        },
-      ],
-    },
-    {
-      id: 'np3',
-      cv_id: 'sample',
-      section_type: 'education',
-      title: 'Education',
-      items: [
-        {
-          id: 'nped1',
-          section_id: 'np3',
-          content: {
-            institution: 'University of Economics Ho Chi Minh City',
-            degree: 'B.A. Marketing',
-            location: 'Ho Chi Minh City, Vietnam',
-            start_date: '2016',
-            end_date: '2020',
-          } as EducationContent,
-        },
-      ],
-    },
-    {
-      id: 'np4',
-      cv_id: 'sample',
-      section_type: 'skills',
-      title: 'Growth Stack',
-      items: [
-        { id: 'nps1', section_id: 'np4', content: { name: 'Google Ads', level: 'Expert', category: 'Paid Media' } as SkillContent },
-        { id: 'nps2', section_id: 'np4', content: { name: 'Meta Ads', level: 'Advanced', category: 'Paid Media' } as SkillContent },
-        { id: 'nps3', section_id: 'np4', content: { name: 'Email Automation', level: 'Advanced', category: 'Lifecycle' } as SkillContent },
-        { id: 'nps4', section_id: 'np4', content: { name: 'GA4', level: 'Advanced', category: 'Analytics' } as SkillContent },
-        { id: 'nps5', section_id: 'np4', content: { name: 'A/B Testing', level: 'Advanced', category: 'Optimization' } as SkillContent },
-      ],
-    },
-    {
-      id: 'np5',
-      cv_id: 'sample',
-      section_type: 'projects',
-      title: 'Projects',
-      items: [
-        {
-          id: 'npp1',
-          section_id: 'np5',
-          content: {
-            name: 'Retention Booster Program',
-            role: 'Campaign Lead',
-            start_date: '2024',
-            end_date: '2025',
-            description: 'A multi-touch lifecycle campaign system that improved 90-day retention for trial users via behavior-based messaging.',
-            technologies: ['HubSpot', 'GA4', 'Looker Studio', 'Meta Ads'],
-          } as ProjectContent,
-        },
-      ],
-    },
-    {
-      id: 'np6',
-      cv_id: 'sample',
-      section_type: 'languages',
-      title: 'Languages',
-      items: [
-        { id: 'npl1', section_id: 'np6', content: { name: 'Vietnamese', proficiency: 'Native' } as LanguageContent },
-        { id: 'npl2', section_id: 'np6', content: { name: 'English', proficiency: 'Fluent' } as LanguageContent },
-      ],
-    },
-    {
-      id: 'np7',
-      cv_id: 'sample',
-      section_type: 'custom',
-      title: 'Highlights',
-      items: [
-        {
-          id: 'npc1',
-          section_id: 'np7',
-          content: {
-            label: 'Recognition',
-            value: 'Top Performer Award 2025 for Product UX Delivery',
-          } as CustomContent,
+            name: 'AWS Certified Developer - Associate',
+            issuer: 'Amazon Web Services',
+            issue_date: '2025-04',
+            expiration_date: '2028-04',
+            credential_url: 'https://www.credly.com/',
+          } as CertificationContent,
         },
       ],
     },
@@ -984,6 +723,24 @@ export const SCHOLAR_ELITE_SAMPLE_DATA: CVData = {
         { id: 'ses3', section_id: 'se5', content: { name: 'PyTorch', level: 'Advanced', category: 'Research Tools' } as SkillContent },
         { id: 'ses4', section_id: 'se5', content: { name: 'LaTeX', level: 'Advanced', category: 'Research Tools' } as SkillContent },
         { id: 'ses5', section_id: 'se5', content: { name: 'Academic Writing', level: 'Expert', category: 'Communication' } as SkillContent },
+      ],
+    },
+    {
+      id: 'se6',
+      cv_id: 'sample',
+      section_type: 'certifications',
+      title: 'Certifications',
+      items: [
+        {
+          id: 'secf1',
+          section_id: 'se6',
+          content: {
+            name: 'TensorFlow Developer Certificate',
+            issuer: 'Google',
+            issue_date: '2025-01',
+            credential_id: 'TFD-2025-8891',
+          } as CertificationContent,
+        },
       ],
     },
   ],

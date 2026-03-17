@@ -17,7 +17,7 @@ export function CVPreviewPanel({ data, TemplateComponent }: CVPreviewPanelProps)
   const handleZoomOut = () => setZoom((prev) => Math.max(prev - 0.1, 0.5));
 
   return (
-    <div className="flex h-full flex-col bg-slate-100/50 dark:bg-slate-950">
+    <div className="flex h-full flex-col bg-slate-100/50 dark:bg-slate-900">
       {/* Zoom Controls */}
       <div className="flex items-center justify-center gap-2 border-b border-gray-200 bg-white/50 backdrop-blur-sm py-2 dark:border-slate-800 dark:bg-slate-900/60">
         <Button

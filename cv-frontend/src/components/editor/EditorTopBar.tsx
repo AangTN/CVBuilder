@@ -69,7 +69,7 @@ export function EditorTopBar({
   const currentFontSizeLabel = FONT_SIZE_OPTIONS.find((option) => option.value === currentFontSize)?.label || 'Vừa';
 
   return (
-    <div className="sticky top-0 z-40 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:bg-slate-950/95 dark:supports-[backdrop-filter]:bg-slate-950/80 dark:border-slate-800">
+    <div className="sticky top-0 z-40 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:bg-slate-900/95 dark:supports-[backdrop-filter]:bg-slate-900/80 dark:border-slate-800">
       <div className="flex h-14 items-center justify-between px-4">
         {/* Left: Navigation & History */}
         <div className="flex items-center gap-3">

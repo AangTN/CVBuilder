@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { api } from '@/features/api';
 
 interface User {
@@ -146,7 +146,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Ensure we have a valid access token before making API calls
-  const ensureAccessToken = async (): Promise<string> => {
+  // Using empty deps because we access accessToken via state and logout is only used in error case
+  const ensureAccessToken = useCallback(async (): Promise<string> => {
     // Nếu đã có accessToken, trả về luôn
     if (accessToken) {
       return accessToken;
@@ -160,10 +161,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return newAccessToken;
     } catch (error) {
       console.error('Failed to refresh token:', error);
-      await logout();
+      // Sử dụng function reference trực tiếp thay vì logout từ closure
+      localStorage.removeItem(USER_KEY);
+      setAccessToken(null);
+      setUser(null);
       throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại');
     }
-  };
+  }, [accessToken]);
 
   return (
     <AuthContext.Provider

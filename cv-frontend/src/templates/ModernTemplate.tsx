@@ -11,6 +11,7 @@ import {
   SkillContent,
   ProjectContent,
   LanguageContent,
+  CertificationContent,
   CustomContent,
   normalizeSkillLevel,
   getSkillLevelLabel,
@@ -28,8 +29,11 @@ import {
 import { A4PageWrapper } from '@/components/cv/A4PageWrapper';
 import { CVPageEngine, CVPageEngineItem } from '@/components/cv/CVPageEngine';
 import { sanitizeRichText } from '@/lib/sanitizeHtml';
+import { formatCvDate, formatCvDateRange } from '@/lib/cvDate';
+import { getSafeImageSrc } from '@/lib/imageUrl';
 import { normalizeFontSizePreset } from './fontSizePreset';
 import { filterRenderableItems, hasRenderableSection } from './renderVisibility';
+import { getCustomPrimaryContent, getExtraFields } from './extraFields';
 
 interface SizeClasses {
   body: string;
@@ -53,20 +57,27 @@ interface SizeClasses {
   metaGapY: string;
 }
 
+const formatGender = (value?: string): string => {
+  if (!value) return '';
+  const token = value.trim().toLowerCase();
+  if (token === 'male') return 'Male';
+  if (token === 'female') return 'Female';
+  if (token === 'other') return 'Other';
+  return value;
+};
+
 // Helper to render extra properties that are not part of the standard schema
 const ExtraProperties: React.FC<{ data: Record<string, unknown>; exclude: string[]; sizeClass?: string }> = ({ data, exclude, sizeClass }) => {
-  const extras = Object.entries(data).filter(
-    ([key, value]) => !exclude.includes(key) && value !== undefined && value !== null && value !== '' && typeof value !== 'object'
-  );
+  const extras = getExtraFields(data, exclude);
 
   if (extras.length === 0) return null;
 
   return (
     <div className="mt-1 space-y-1">
-      {extras.map(([key, value]) => (
-        <div key={key} className={sizeClass || 'text-sm'}>
-          <span className="font-semibold text-gray-700 capitalize">{key.replace(/_/g, ' ')}: </span>
-          <span className="text-gray-600">{String(value)}</span>
+      {extras.map((extra) => (
+        <div key={extra.key} className={sizeClass || 'text-sm'}>
+          <span className="font-semibold text-gray-700 capitalize">{extra.label}: </span>
+          <span className="text-gray-600">{extra.value}</span>
         </div>
       ))}
     </div>
@@ -75,24 +86,27 @@ const ExtraProperties: React.FC<{ data: Record<string, unknown>; exclude: string
 
 // --- Atomic Rendering Helpers (Stateless) ---
 
-const renderHeader = (header: HeaderContent, primaryColor: string, size: SizeClasses) => (
-  <header
-    className={`${size.headerMb} ${size.headerPb} relative`}
-    style={{ borderBottom: `2px solid ${primaryColor}` }}
-  >
-    <div className={`flex items-start ${size.headerGap}`}>
-      {header.photo_url && (
-        <Image
-          src={header.photo_url}
-          alt={header.full_name}
-          width={112}
-          height={112}
-          unoptimized
-          className={`${size.avatar} rounded-full object-cover`}
-          style={{ border: `3px solid ${primaryColor}` }}
-        />
-      )}
-      <div className="flex-1">
+const renderHeader = (header: HeaderContent, primaryColor: string, size: SizeClasses) => {
+  const headerPhotoSrc = getSafeImageSrc(header.photo_url);
+
+  return (
+    <header
+      className={`${size.headerMb} ${size.headerPb} relative`}
+      style={{ borderBottom: `2px solid ${primaryColor}` }}
+    >
+      <div className={`flex items-start ${size.headerGap}`}>
+        {headerPhotoSrc && (
+          <Image
+            src={headerPhotoSrc}
+            alt={header.full_name}
+            width={112}
+            height={112}
+            unoptimized
+            className={`${size.avatar} rounded-full object-cover`}
+            style={{ border: `3px solid ${primaryColor}` }}
+          />
+        )}
+        <div className="flex-1">
         {header.full_name && (
           <h1 className={`${size.name} font-bold mb-1`} style={{ color: primaryColor }}>
             {header.full_name}
@@ -116,6 +130,16 @@ const renderHeader = (header: HeaderContent, primaryColor: string, size: SizeCla
               <MapPin size={14} style={{ color: primaryColor }} /> {header.location}
             </span>
           )}
+          {header.date_of_birth && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5">
+              <Calendar size={14} style={{ color: primaryColor }} /> {formatCvDate(header.date_of_birth)}
+            </span>
+          )}
+          {header.gender && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5">
+              {formatGender(header.gender)}
+            </span>
+          )}
           {header.website && (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5">
               <Globe size={14} style={{ color: primaryColor }} /> {header.website}
@@ -131,6 +155,21 @@ const renderHeader = (header: HeaderContent, primaryColor: string, size: SizeCla
               <Github size={14} style={{ color: primaryColor }} /> {header.github}
             </span>
           )}
+          {header.facebook && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5">
+              <Globe size={14} style={{ color: primaryColor }} /> {header.facebook}
+            </span>
+          )}
+          {header.twitter && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5">
+              <Globe size={14} style={{ color: primaryColor }} /> {header.twitter}
+            </span>
+          )}
+          {header.instagram && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5">
+              <Globe size={14} style={{ color: primaryColor }} /> {header.instagram}
+            </span>
+          )}
         </div>
         
         {header.summary && (
@@ -141,13 +180,14 @@ const renderHeader = (header: HeaderContent, primaryColor: string, size: SizeCla
 
         <ExtraProperties 
           data={header} 
-          exclude={['full_name', 'title', 'email', 'phone', 'location', 'website', 'linkedin', 'github', 'photo_url', 'summary']} 
+          exclude={['full_name', 'title', 'email', 'phone', 'location', 'address', 'date_of_birth', 'gender', 'website', 'linkedin', 'github', 'facebook', 'twitter', 'instagram', 'photo_url', 'summary']} 
           sizeClass={size.body}
         />
+        </div>
       </div>
-    </div>
-  </header>
-);
+    </header>
+  );
+};
 
 const renderSectionTitle = (title: string, primaryColor: string, size: SizeClasses) => (
   <h2
@@ -164,18 +204,22 @@ const renderSectionTitle = (title: string, primaryColor: string, size: SizeClass
 
 const renderExperienceItem = (item: CVSectionItem, primaryColor: string, size: SizeClasses, presentLabel?: string) => {
   const exp = item.content as ExperienceContent;
+  const dateRange = formatCvDateRange(exp.start_date, exp.end_date, exp.is_current, presentLabel);
   return (
     <div className={`${size.itemMb} break-inside-avoid rounded-md border border-slate-200 bg-slate-50/60 px-3 py-2`}>
       <div className="flex justify-between items-start mb-1.5 gap-4">
         <div className="flex-1">
           <h3 className={`${size.itemTitle} font-bold text-gray-900`}>{exp.role}</h3>
           <p className={`${size.itemSub} font-semibold`} style={{ color: primaryColor }}>{exp.company}</p>
+          {exp.employment_type && <p className={`${size.meta} text-gray-600`}>{exp.employment_type}</p>}
           {exp.location && <p className={`${size.meta} text-gray-600`}>{exp.location}</p>}
         </div>
-        <div className={`text-right ${size.meta} text-gray-600 whitespace-nowrap flex items-center gap-1`}>
-          <Calendar size={12} />
-          <span>{exp.start_date} - {exp.is_current ? (presentLabel || exp.end_date) : exp.end_date}</span>
-        </div>
+        {dateRange && (
+          <div className={`text-right ${size.meta} text-gray-600 whitespace-nowrap flex items-center gap-1`}>
+            <Calendar size={12} />
+            <span>{dateRange}</span>
+          </div>
+        )}
       </div>
       {exp.description && (
         <div 
@@ -192,7 +236,7 @@ const renderExperienceItem = (item: CVSectionItem, primaryColor: string, size: S
       )}
       <ExtraProperties 
         data={exp} 
-        exclude={['company', 'role', 'location', 'start_date', 'end_date', 'is_current', 'description', 'highlights']} 
+        exclude={['company', 'role', 'location', 'employment_type', 'start_date', 'end_date', 'is_current', 'description', 'highlights']} 
         sizeClass={size.body}
       />
     </div>
@@ -201,6 +245,7 @@ const renderExperienceItem = (item: CVSectionItem, primaryColor: string, size: S
 
 const renderEducationItem = (item: CVSectionItem, primaryColor: string, size: SizeClasses, presentLabel?: string) => {
   const edu = item.content as EducationContent;
+  const dateRange = formatCvDateRange(edu.start_date, edu.end_date, edu.is_current, presentLabel);
   return (
     <div className={`${size.itemMb} break-inside-avoid rounded-md border border-slate-200 bg-slate-50/60 px-3 py-2`}>
       <div className="flex justify-between items-start mb-1.5 gap-4">
@@ -212,10 +257,12 @@ const renderEducationItem = (item: CVSectionItem, primaryColor: string, size: Si
           )}
         </div>
         <div className={`text-right ${size.meta} text-gray-600 whitespace-nowrap`}>
-          <div className="flex items-center gap-1 justify-end">
-            <Calendar size={12} />
-            <span>{edu.start_date} - {edu.is_current ? (presentLabel || edu.end_date) : edu.end_date}</span>
-          </div>
+          {dateRange && (
+            <div className="flex items-center gap-1 justify-end">
+              <Calendar size={12} />
+              <span>{dateRange}</span>
+            </div>
+          )}
           {edu.location && <p className="mt-0.5">{edu.location}</p>}
           {edu.gpa && <p className="mt-0.5 font-medium">GPA: {edu.gpa}</p>}
         </div>
@@ -275,6 +322,7 @@ const renderSkillsGroup = (
 
 const renderProjectItem = (item: CVSectionItem, primaryColor: string, size: SizeClasses) => {
   const project = item.content as ProjectContent;
+  const dateRange = formatCvDateRange(project.start_date, project.end_date);
   return (
     <div className={`${size.itemMb} break-inside-avoid rounded-md border border-slate-200 bg-slate-50/60 px-3 py-2`}>
       <div className="flex justify-between items-start mb-1.5 gap-4">
@@ -284,10 +332,10 @@ const renderProjectItem = (item: CVSectionItem, primaryColor: string, size: Size
             <p className={`${size.meta} text-gray-600`}>{project.role}</p>
           )}
         </div>
-        {(project.start_date || project.end_date) && (
+        {dateRange && (
           <div className={`${size.meta} text-gray-600 whitespace-nowrap flex items-center gap-1`}>
             <Calendar size={12} />
-            <span>{project.start_date} {project.end_date && `- ${project.end_date}`}</span>
+            <span>{dateRange}</span>
           </div>
         )}
       </div>
@@ -326,26 +374,90 @@ const renderLanguageItem = (item: CVSectionItem, primaryColor: string, size: Siz
     <div className="break-inside-avoid rounded-md border border-slate-200 bg-white px-3 py-2">
       <div className={`flex justify-between items-center ${size.meta} gap-2`}>
         <span className="font-semibold text-gray-800 truncate">{lang.name}</span>
-        <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-gray-700 whitespace-nowrap">
-          {lang.proficiency}
-        </span>
+        {lang.proficiency && (
+          <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-gray-700 whitespace-nowrap">
+            {lang.proficiency}
+          </span>
+        )}
       </div>
-      <ExtraProperties data={lang} exclude={['name', 'proficiency', 'certification']} sizeClass={size.body} />
+      <ExtraProperties
+        data={lang}
+        exclude={['name', 'proficiency', 'certification', 'certificate', 'cert', 'language_certificate', 'languageCertification', 'chung_chi', 'chungChi']}
+        sizeClass={size.body}
+      />
+    </div>
+  );
+};
+
+const renderCertificationItem = (item: CVSectionItem, primaryColor: string, size: SizeClasses) => {
+  const cert = item.content as CertificationContent;
+  const dateRange = formatCvDateRange(cert.issue_date, cert.expiration_date);
+
+  return (
+    <div className="mb-2 break-inside-avoid rounded-md border border-slate-200 bg-white px-3 py-2">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          {cert.name && <div className={`${size.itemTitle} font-semibold text-gray-800`}>{cert.name}</div>}
+          {cert.issuer && <div className={`${size.meta} text-gray-600`}>{cert.issuer}</div>}
+        </div>
+        {dateRange && <div className={`${size.meta} whitespace-nowrap text-gray-600`}>{dateRange}</div>}
+      </div>
+
+      {(cert.credential_id || cert.credential_url) && (
+        <div className={`${size.meta} mt-1 space-y-0.5 text-gray-600`}>
+          {cert.credential_id && (
+            <div>
+              <span className="font-semibold" style={{ color: primaryColor }}>ID: </span>
+              <span>{cert.credential_id}</span>
+            </div>
+          )}
+          {cert.credential_url && <div className="break-all">{cert.credential_url}</div>}
+        </div>
+      )}
+
+      {cert.description && <p className={`${size.body} mt-1.5 text-gray-700`}>{cert.description}</p>}
+
+      <ExtraProperties
+        data={cert as Record<string, unknown>}
+        exclude={['name', 'issuer', 'issue_date', 'expiration_date', 'credential_id', 'credential_url', 'description']}
+        sizeClass={size.body}
+      />
     </div>
   );
 };
 
 const renderCustomItem = (item: CVSectionItem, primaryColor: string, size: SizeClasses) => {
   const custom = item.content as CustomContent;
+  const customRecord = custom as Record<string, unknown>;
+  const { label, value } = getCustomPrimaryContent(customRecord);
+  const extras = getExtraFields(customRecord, ['label', 'value', 'text']);
+
+  if (!label && !value && extras.length === 0) {
+    return null;
+  }
+
   return (
     <div className="mb-2 break-inside-avoid">
-      <div className={`flex gap-2 ${size.meta}`}>
-        <span className="font-bold min-w-[100px]" style={{ color: primaryColor }}>
-          {custom.label}:
-        </span>
-        <span className="text-gray-700 flex-1">{custom.value}</span>
-      </div>
-      <ExtraProperties data={custom} exclude={['label', 'value']} sizeClass={size.body} />
+      {(label || value) && (
+        <div className={`flex gap-2 ${size.meta}`}>
+          {label && (
+            <span className="font-bold min-w-[100px]" style={{ color: primaryColor }}>
+              {value ? `${label}:` : label}
+            </span>
+          )}
+          {value && <span className="text-gray-700 flex-1 whitespace-pre-line">{value}</span>}
+        </div>
+      )}
+      {extras.length > 0 && (
+        <div className="mt-1 space-y-1">
+          {extras.map((extra) => (
+            <div key={extra.key} className={size.body}>
+              <span className="font-semibold text-gray-700 capitalize">{extra.label}: </span>
+              <span className="text-gray-600">{extra.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -486,10 +598,6 @@ export const ModernTemplate: React.FC<{ data: CVData; previewMode?: boolean }> =
       const sectionItems = filterRenderableItems(section.items);
       if (sectionItems.length === 0) return;
 
-      const isSupportedSection = ['experience', 'education', 'skills', 'projects', 'languages', 'custom'].includes(section.section_type);
-      // We now support all sections via generic fallback
-      // if (!isSupportedSection) return;
-
       // 1. Section Title
       // Add margin top spacer if not first?
       if (result.length > 0) {
@@ -546,6 +654,14 @@ export const ModernTemplate: React.FC<{ data: CVData; previewMode?: boolean }> =
            });
          });
        }
+      } else if (section.section_type === 'certifications') {
+        sectionItems.forEach((item) => {
+          result.push({
+            id: `cert-${section.id}-${item.id}`,
+            type: 'content',
+            render: () => renderCertificationItem(item, primaryColor, sizeClasses),
+          });
+        });
       } else {
         // Standard List (Experience, Education, Projects, Custom, Generic)
         sectionItems.forEach((item) => {

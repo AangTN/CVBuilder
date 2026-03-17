@@ -10,10 +10,29 @@ const apiHost = (() => {
   }
 })();
 
+const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 const nextConfig: NextConfig = {
+  async rewrites() {
+    return [
+      {
+        source: '/uploads/:path*',
+        destination: `${backendUrl}/uploads/:path*`,
+      },
+    ];
+  },
   images: {
     qualities: [75, 100],
     remotePatterns: [
+      // Dicebear avatar service (sample data)
+      {
+        protocol: "https",
+        hostname: "api.dicebear.com",
+      },
+      {
+        protocol: "https",
+        hostname: "*.dicebear.com",
+      },
       // Google profile pictures (OAuth login)
       {
         protocol: "https",
@@ -26,6 +45,11 @@ const nextConfig: NextConfig = {
       // Backend uploads (production – HTTPS)
       {
         protocol: "https",
+        hostname: apiHost,
+      },
+      // Backend uploads (production – HTTP)
+      {
+        protocol: "http",
         hostname: apiHost,
       },
       // Backend uploads (local development – HTTP)

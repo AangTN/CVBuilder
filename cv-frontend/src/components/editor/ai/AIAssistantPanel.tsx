@@ -161,7 +161,7 @@ export function AIAssistantPanel({
       />
       
       {/* Side Panel */}
-      <div className="fixed top-0 right-0 h-full w-full sm:w-[400px] bg-white shadow-2xl z-50 flex flex-col border-l animate-in slide-in-from-right duration-300 dark:bg-slate-950 dark:border-slate-800">
+      <div className="fixed top-0 right-0 h-full w-full sm:w-[400px] bg-white shadow-2xl z-50 flex flex-col border-l animate-in slide-in-from-right duration-300 dark:bg-slate-900 dark:border-slate-800">
         
         {/* Header */}
         <div className="h-14 border-b flex items-center justify-between px-4 bg-gradient-to-r from-blue-50 to-white dark:border-slate-800 dark:from-blue-950/30 dark:to-slate-950">
@@ -390,7 +390,7 @@ export function AIAssistantPanel({
                  <div ref={chatEndRef} />
               </div>
               
-              <div className="p-4 bg-white border-t dark:bg-slate-950 dark:border-slate-800">
+              <div className="p-4 bg-white border-t dark:bg-slate-900 dark:border-slate-800">
                  <div className="relative">
                     <Textarea
                       placeholder="Nhập yêu cầu (ví dụ: Viết lại phần kinh nghiệm hay hơn...)"

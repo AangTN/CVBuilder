@@ -10,12 +10,31 @@ interface MessageError {
 }
 
 const getErrorMessage = (error: unknown, fallback: string) => {
+  if (typeof error === 'string' && error.trim().length > 0) {
+    return error;
+  }
+
   if (typeof error === 'object' && error !== null && 'message' in error) {
-    const message = (error as MessageError).message;
+    const message = (error as MessageError | { message?: unknown }).message;
     if (typeof message === 'string' && message.trim().length > 0) {
       return message;
     }
+
+    if (Array.isArray(message) && message.length > 0) {
+      const firstMessage = message.find(
+        (value): value is string =>
+          typeof value === 'string' && value.trim().length > 0,
+      );
+      if (firstMessage) {
+        return firstMessage;
+      }
+    }
   }
+
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+
   return fallback;
 };
 

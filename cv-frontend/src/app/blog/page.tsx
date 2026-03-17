@@ -1,34 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { PageTransition } from '@/components/ui/page-transition';
-import type { PublicBlogPostSummary, PublicBlogCategory } from '@/features/api';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
-async function fetchPosts(params: {
-  page?: number;
-  category?: string;
-  tag?: string;
-}) {
-  const query = new URLSearchParams();
-  query.set('pageSize', '9');
-  if (params.page && params.page > 1) query.set('page', String(params.page));
-  if (params.category) query.set('category', params.category);
-  if (params.tag) query.set('tag', params.tag);
-  try {
-    const res = await fetch(`${API_BASE}/blog/posts?${query}`, { next: { revalidate: 60 } });
-    if (!res.ok) return null;
-    return res.json() as Promise<{ total: number; page: number; totalPages: number; posts: PublicBlogPostSummary[] }>;
-  } catch { return null; }
-}
-
-async function fetchCategories(): Promise<PublicBlogCategory[]> {
-  try {
-    const res = await fetch(`${API_BASE}/blog/categories`, { next: { revalidate: 300 } });
-    if (!res.ok) return [];
-    return res.json();
-  } catch { return []; }
-}
+import { getPublicBlogCategories, getPublicBlogPosts } from '@/lib/public-data';
 
 export const metadata: Metadata = {
   title: 'Blog CV - Mẹo Viết CV & Kinh Nghiệm Phỏng Vấn',
@@ -57,13 +30,12 @@ export default async function BlogPage({ searchParams }: PageProps) {
   const tag = params.tag || '';
 
   const [data, categories] = await Promise.all([
-    fetchPosts({ page, category, tag }),
-    fetchCategories(),
+    getPublicBlogPosts({ page, pageSize: 9, category, tag }),
+    getPublicBlogCategories(),
   ]);
 
   const posts = data?.posts ?? [];
   const totalPages = data?.totalPages ?? 1;
-  const total = data?.total ?? 0;
 
   const buildUrl = (overrides: Record<string, string | number | undefined>) => {
     const p = new URLSearchParams();

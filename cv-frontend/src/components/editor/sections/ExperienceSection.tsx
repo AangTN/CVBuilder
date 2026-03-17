@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { SimpleSelect } from '@/components/ui/select';
+import { MonthYearInput } from '@/components/editor/inputs/MonthYearInput';
 import { Plus, GripVertical, Trash2, X, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import { Language, getSectionTitle } from '@/lib/sectionTitles';
@@ -19,12 +21,13 @@ interface ExperienceSectionProps {
   onToggleVisibility: (sectionId: string, currentVisibility: boolean) => void;
 }
 
-const standardExperienceFields = ['company', 'role', 'location', 'start_date', 'end_date', 'is_current', 'description', 'highlights'];
+const standardExperienceFields = ['company', 'role', 'location', 'employment_type', 'start_date', 'end_date', 'is_current', 'description', 'highlights'];
 
 const EXPERIENCE_TEXTS: Record<Language, {
   itemTitle: string;
   highlightsPlaceholder: string;
   addHighlight: string;
+  employmentTypePlaceholder: string;
   otherInfo: string;
   customFieldKey: string;
   customFieldValue: string;
@@ -34,6 +37,7 @@ const EXPERIENCE_TEXTS: Record<Language, {
     itemTitle: 'Kinh nghiệm',
     highlightsPlaceholder: 'Thành tích...',
     addHighlight: 'Thêm điểm nổi bật',
+    employmentTypePlaceholder: 'Chọn hình thức làm việc',
     otherInfo: 'Thông tin khác',
     customFieldKey: 'Tên...',
     customFieldValue: 'Giá trị...',
@@ -43,6 +47,7 @@ const EXPERIENCE_TEXTS: Record<Language, {
     itemTitle: 'Experience',
     highlightsPlaceholder: 'Achievement...',
     addHighlight: 'Add highlight',
+    employmentTypePlaceholder: 'Select employment type',
     otherInfo: 'Other information',
     customFieldKey: 'Label...',
     customFieldValue: 'Value...',
@@ -52,6 +57,7 @@ const EXPERIENCE_TEXTS: Record<Language, {
     itemTitle: '職務経歴',
     highlightsPlaceholder: '実績...',
     addHighlight: '実績を追加',
+    employmentTypePlaceholder: '雇用形態を選択',
     otherInfo: 'その他の情報',
     customFieldKey: '項目名...',
     customFieldValue: '値...',
@@ -61,6 +67,7 @@ const EXPERIENCE_TEXTS: Record<Language, {
     itemTitle: '경력',
     highlightsPlaceholder: '성과...',
     addHighlight: '성과 추가',
+    employmentTypePlaceholder: '고용 형태 선택',
     otherInfo: '기타 정보',
     customFieldKey: '이름...',
     customFieldValue: '값...',
@@ -70,6 +77,7 @@ const EXPERIENCE_TEXTS: Record<Language, {
     itemTitle: '工作经历',
     highlightsPlaceholder: '成就...',
     addHighlight: '添加亮点',
+    employmentTypePlaceholder: '选择工作类型',
     otherInfo: '其他信息',
     customFieldKey: '名称...',
     customFieldValue: '值...',
@@ -77,9 +85,48 @@ const EXPERIENCE_TEXTS: Record<Language, {
   },
 };
 
+const EMPLOYMENT_TYPE_OPTIONS: Record<Language, { value: string; label: string }[]> = {
+  vi: [
+    { value: 'full_time', label: 'Toàn thời gian' },
+    { value: 'part_time', label: 'Bán thời gian' },
+    { value: 'contract', label: 'Hợp đồng' },
+    { value: 'internship', label: 'Thực tập' },
+    { value: 'freelance', label: 'Freelance' },
+  ],
+  en: [
+    { value: 'full_time', label: 'Full-time' },
+    { value: 'part_time', label: 'Part-time' },
+    { value: 'contract', label: 'Contract' },
+    { value: 'internship', label: 'Internship' },
+    { value: 'freelance', label: 'Freelance' },
+  ],
+  ja: [
+    { value: 'full_time', label: '正社員' },
+    { value: 'part_time', label: 'パートタイム' },
+    { value: 'contract', label: '契約社員' },
+    { value: 'internship', label: 'インターン' },
+    { value: 'freelance', label: 'フリーランス' },
+  ],
+  ko: [
+    { value: 'full_time', label: '정규직' },
+    { value: 'part_time', label: '파트타임' },
+    { value: 'contract', label: '계약직' },
+    { value: 'internship', label: '인턴십' },
+    { value: 'freelance', label: '프리랜서' },
+  ],
+  zh: [
+    { value: 'full_time', label: '全职' },
+    { value: 'part_time', label: '兼职' },
+    { value: 'contract', label: '合同制' },
+    { value: 'internship', label: '实习' },
+    { value: 'freelance', label: '自由职业' },
+  ],
+};
+
 export function ExperienceSection({ section, language, onUpdate, onToggleVisibility }: ExperienceSectionProps) {
   const [customFieldInputs, setCustomFieldInputs] = useState<Record<number, { key: string; value: string }>>({});
   const text = EXPERIENCE_TEXTS[language] || EXPERIENCE_TEXTS.en;
+  const employmentTypeOptions = EMPLOYMENT_TYPE_OPTIONS[language] || EMPLOYMENT_TYPE_OPTIONS.en;
 
   const getStringContent = (content: Record<string, unknown>, key: string): string => {
     const value = content[key];
@@ -129,10 +176,10 @@ export function ExperienceSection({ section, language, onUpdate, onToggleVisibil
   };
 
   return (
-    <AccordionItem value="experience">
+    <AccordionItem value="experience" className="rounded-xl border-2 border-gray-200 bg-white px-1 dark:border-slate-700 dark:bg-card">
       <div className="flex items-center justify-between pr-4">
         <AccordionTrigger 
-          className={`text-lg font-semibold flex-1 ${!section.is_visible ? 'opacity-50' : ''}`}
+          className={`flex-1 px-4 py-4 text-lg font-semibold hover:no-underline ${!section.is_visible ? 'opacity-50' : ''}`}
         >
           {getSectionTitle('experience', language)} ({section.items.length})
         </AccordionTrigger>
@@ -148,10 +195,10 @@ export function ExperienceSection({ section, language, onUpdate, onToggleVisibil
           {section.is_visible !== false ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
         </Button>
       </div>
-      <AccordionContent>
+      <AccordionContent className="px-4 pb-4">
         <div className="space-y-4 pt-4">
           {section.items.map((item, index) => (
-            <div key={item.id} className="relative rounded-lg border bg-muted/50 p-4">
+            <div key={item.id} className="relative rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/60">
               <div className="absolute left-2 top-2 cursor-move text-gray-400">
                 <GripVertical className="h-4 w-4" />
               </div>
@@ -171,7 +218,7 @@ export function ExperienceSection({ section, language, onUpdate, onToggleVisibil
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div>
                     <Label>{getFieldLabel('experience', 'role', language)} *</Label>
                     <Input
@@ -190,31 +237,51 @@ export function ExperienceSection({ section, language, onUpdate, onToggleVisibil
                   </div>
                 </div>
 
-                <div>
-                  <Label>{getFieldLabel('experience', 'location', language)}</Label>
-                  <Input
-                    placeholder={getFieldPlaceholder('experience', 'location', language)}
-                    value={getStringContent(item.content, 'location')}
-                    onChange={(e) => updateItemField(index, 'location', e.target.value)}
-                  />
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div>
+                    <Label>{getFieldLabel('experience', 'location', language)}</Label>
+                    <Input
+                      placeholder={getFieldPlaceholder('experience', 'location', language)}
+                      value={getStringContent(item.content, 'location')}
+                      onChange={(e) => updateItemField(index, 'location', e.target.value)}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>{getFieldLabel('experience', 'employment_type', language)}</Label>
+                    <SimpleSelect
+                      value={getStringContent(item.content, 'employment_type')}
+                      onChange={(e) => updateItemField(index, 'employment_type', e.target.value)}
+                      className="h-9"
+                    >
+                      <option value="">{text.employmentTypePlaceholder}</option>
+                      {employmentTypeOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </SimpleSelect>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div>
                     <Label>{getFieldLabel('experience', 'start_date', language)}</Label>
-                    <Input
-                      type="month"
+                    <MonthYearInput
+                      language={language}
                       value={getStringContent(item.content, 'start_date')}
-                      onChange={(e) => updateItemField(index, 'start_date', e.target.value)}
+                      onChange={(value) => updateItemField(index, 'start_date', value)}
+                      placeholder={getFieldPlaceholder('experience', 'start_date', language)}
                     />
                   </div>
                   <div>
                     <Label>{getFieldLabel('experience', 'end_date', language)}</Label>
-                    <Input
-                      type="month"
+                    <MonthYearInput
+                      language={language}
                       value={getStringContent(item.content, 'end_date')}
-                      onChange={(e) => updateItemField(index, 'end_date', e.target.value)}
+                      onChange={(value) => updateItemField(index, 'end_date', value)}
                       disabled={getBooleanContent(item.content, 'is_current')}
+                      placeholder={getFieldPlaceholder('experience', 'end_date', language)}
                     />
                   </div>
                 </div>
@@ -342,7 +409,16 @@ export function ExperienceSection({ section, language, onUpdate, onToggleVisibil
               newItems.push({
                 id: `new-${Date.now()}`,
                 section_id: section.id,
-                content: { role: '', company: '', location: '', start_date: '', end_date: '', description: '', highlights: [] }
+                content: {
+                  role: '',
+                  company: '',
+                  location: '',
+                  employment_type: '',
+                  start_date: '',
+                  end_date: '',
+                  description: '',
+                  highlights: [],
+                }
               });
               onUpdate(section.id, { items: newItems });
             }}

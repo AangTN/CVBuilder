@@ -209,6 +209,7 @@ enum section_type_enum {
   skills
   projects
   languages
+  certifications
   custom
 }
 

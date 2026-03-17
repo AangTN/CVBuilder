@@ -17,11 +17,98 @@ import { useAuth } from '@/context/AuthContext';
 import { api } from '@/features/api';
 import { useHistory } from '@/hooks/useHistory';
 import { useEditorAI } from '@/hooks/editor/useEditorAI';
+import { buildDraftStorageKey } from '@/hooks/editor/useEditorAutosave';
+
+interface LocalDraftPayload {
+  cvData: CVData;
+  lastSaved?: string;
+}
+
+const normalizeEditorData = (sourceData: CVData): CVData => {
+  const safeSections = Array.isArray(sourceData.sections) ? sourceData.sections : [];
+  const resolvedLanguage = isSupportedLanguage(sourceData.language)
+    ? sourceData.language
+    : (inferLanguageFromSections(safeSections) || 'vi');
+
+  return {
+    ...sourceData,
+    language: resolvedLanguage,
+    sections: normalizeSectionTitles(safeSections, resolvedLanguage),
+    settings: {
+      ...(sourceData.settings || {}),
+      labels: {
+        ...(sourceData.settings?.labels || {}),
+        present: getPresentLabel(resolvedLanguage),
+        contact: getContactLabel(resolvedLanguage),
+      },
+    },
+  };
+};
+
+const getRouteDraftPrefix = (userId: string | null | undefined, routePath: string) =>
+  `cv_draft:${userId || 'guest'}:${routePath}:`;
+
+const findLatestRouteDraft = (
+  userId: string | null | undefined,
+  routePath: string,
+): { key: string; payload: LocalDraftPayload } | null => {
+  const prefix = getRouteDraftPrefix(userId, routePath);
+  let latestDraft: { key: string; payload: LocalDraftPayload; savedAt: number } | null = null;
+
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index);
+    if (!key || !key.startsWith(prefix)) {
+      continue;
+    }
+
+    const rawDraft = localStorage.getItem(key);
+    if (!rawDraft) {
+      continue;
+    }
+
+    try {
+      const parsedDraft = JSON.parse(rawDraft) as LocalDraftPayload;
+      const hasSections = Array.isArray(parsedDraft?.cvData?.sections);
+
+      if (!hasSections) {
+        localStorage.removeItem(key);
+        continue;
+      }
+
+      const savedAt = parsedDraft.lastSaved ? new Date(parsedDraft.lastSaved).getTime() : 0;
+      if (!latestDraft || savedAt > latestDraft.savedAt) {
+        latestDraft = { key, payload: parsedDraft, savedAt };
+      }
+    } catch {
+      localStorage.removeItem(key);
+    }
+  }
+
+  if (!latestDraft) {
+    return null;
+  }
+
+  return {
+    key: latestDraft.key,
+    payload: latestDraft.payload,
+  };
+};
+
+const clearRouteDrafts = (userId: string | null | undefined, routePath: string) => {
+  const prefix = getRouteDraftPrefix(userId, routePath);
+
+  for (let index = localStorage.length - 1; index >= 0; index -= 1) {
+    const key = localStorage.key(index);
+    if (key?.startsWith(prefix)) {
+      localStorage.removeItem(key);
+    }
+  }
+};
 
 export default function MyCVPage() {
   const params = useParams();
   const cvId = params.id as string;
-  const { isAuthenticated, isLoading: authLoading, ensureAccessToken } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, ensureAccessToken } = useAuth();
   const router = useRouter();
 
   type ApiSectionItem = {
@@ -70,11 +157,12 @@ export default function MyCVPage() {
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [showAIPanel, setShowAIPanel] = useState(false);
   const [showUndoRedoToast, setShowUndoRedoToast] = useState<string | null>(null);
+  const [isLocalDraftDirty, setIsLocalDraftDirty] = useState(false);
 
   const { applyAIChatOperations } = useEditorAI({
     cvData,
     setCvData,
-    setIsDraftDirty: () => {},
+    setIsDraftDirty: setIsLocalDraftDirty,
   });
 
   useEffect(() => {
@@ -95,6 +183,7 @@ export default function MyCVPage() {
         const cv = (await api.getCvById(token, cvId)) as ApiCvDetail;
 
         const normalizedData: CVData = {
+          id: cv.id,
           name: cv.name,
           template_id: cv.template_id,
           language: cv.language || 'vi',
@@ -116,25 +205,30 @@ export default function MyCVPage() {
           })),
         };
 
-        const resolvedLanguage = isSupportedLanguage(normalizedData.language)
-          ? normalizedData.language
-          : (inferLanguageFromSections(normalizedData.sections || []) || 'vi');
+        const normalizedWithLanguage = normalizeEditorData(normalizedData);
+        const routePath = window.location.pathname;
+        const localDraft = findLatestRouteDraft(user?.id, routePath);
 
-        const normalizedWithLanguage: CVData = {
-          ...normalizedData,
-          language: resolvedLanguage,
-          sections: normalizeSectionTitles(normalizedData.sections || [], resolvedLanguage),
-          settings: {
-            ...normalizedData.settings,
-            labels: {
-              ...(normalizedData.settings?.labels || {}),
-              present: getPresentLabel(resolvedLanguage),
-              contact: getContactLabel(resolvedLanguage),
-            },
-          },
-        };
+        if (localDraft) {
+          const shouldUseDraft = window.confirm(
+            'Phát hiện dữ liệu nhập chưa lưu trong localStorage. Bạn có muốn sử dụng lại không?',
+          );
 
-        resetHistory(normalizedWithLanguage);
+          if (shouldUseDraft) {
+            const normalizedDraft = normalizeEditorData({
+              ...localDraft.payload.cvData,
+              id: cv.id,
+            });
+            resetHistory(normalizedDraft);
+            toast.success('Đã nạp dữ liệu từ localStorage');
+          } else {
+            localStorage.removeItem(localDraft.key);
+            resetHistory(normalizedWithLanguage);
+            toast.info('Đã xóa dữ liệu localStorage cũ');
+          }
+        } else {
+          resetHistory(normalizedWithLanguage);
+        }
       } catch (error: unknown) {
         const apiError = (error as ApiLikeError) || {};
         console.error('Error loading CV from API:', error);
@@ -161,7 +255,36 @@ export default function MyCVPage() {
     };
 
     loadCV();
-  }, [cvId, isAuthenticated, authLoading, router, ensureAccessToken]);
+  }, [cvId, isAuthenticated, authLoading, router, ensureAccessToken, resetHistory, user?.id]);
+
+  useEffect(() => {
+    if (isPageLoading || !isLocalDraftDirty) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      try {
+        const routePath = window.location.pathname;
+        const draftStorageKey = buildDraftStorageKey(
+          user?.id,
+          routePath,
+          cvData.template_id || 'unknown-template',
+        );
+
+        const dataToSave: LocalDraftPayload = {
+          cvData,
+          lastSaved: new Date().toISOString(),
+        };
+
+        localStorage.setItem(draftStorageKey, JSON.stringify(dataToSave));
+        setIsLocalDraftDirty(false);
+      } catch (error) {
+        console.error('Error saving local draft:', error);
+      }
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [cvData, isLocalDraftDirty, isPageLoading, user?.id]);
 
   const saveToBackend = async () => {
     try {
@@ -194,6 +317,8 @@ export default function MyCVPage() {
     try {
       setIsSaving(true);
       await saveToBackend();
+      clearRouteDrafts(user?.id, window.location.pathname);
+      setIsLocalDraftDirty(false);
       toast.success('CV đã được lưu thành công!');
     } catch (error: unknown) {
       const message =
@@ -209,6 +334,7 @@ export default function MyCVPage() {
 
   const handleTemplateChange = useCallback((newTemplateId: string) => {
     setCvData({ ...cvData, template_id: newTemplateId }, true);
+    setIsLocalDraftDirty(true);
   }, [cvData, setCvData]);
 
   const handleUndo = useCallback(() => {
@@ -233,6 +359,7 @@ export default function MyCVPage() {
         fontSize,
       },
     });
+    setIsLocalDraftDirty(true);
   };
 
   const handleLanguageChange = (language: Language) => {
@@ -250,6 +377,7 @@ export default function MyCVPage() {
         },
       },
     });
+    setIsLocalDraftDirty(true);
   };
 
   const handleExportPDF = async () => {
@@ -362,11 +490,17 @@ export default function MyCVPage() {
       )}
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="w-[45%] border-r border-blue-100 dark:border-slate-800 bg-white dark:bg-background">
-          <CVInputPanel data={cvData} onChange={(data) => setCvData(data, true)} />
+        <div className="w-[55%] border-r border-blue-100 dark:border-slate-800 bg-white dark:bg-background">
+          <CVInputPanel
+            data={cvData}
+            onChange={(data) => {
+              setCvData(data, true);
+              setIsLocalDraftDirty(true);
+            }}
+          />
         </div>
 
-        <div className="w-[55%] bg-slate-50 dark:bg-slate-950">
+        <div className="w-[45%] bg-slate-50 dark:bg-slate-900">
           <CVPreviewPanel
             data={cvData}
             TemplateComponent={template.component}

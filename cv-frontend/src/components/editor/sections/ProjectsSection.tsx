@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { MonthYearInput } from '@/components/editor/inputs/MonthYearInput';
 import { Plus, Trash2, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import { Language, getSectionTitle } from '@/lib/sectionTitles';
@@ -112,10 +113,10 @@ export function ProjectsSection({ section, language, onUpdate, onToggleVisibilit
   };
 
   return (
-    <AccordionItem value="projects">
+    <AccordionItem value="projects" className="rounded-xl border-2 border-gray-200 bg-white px-1 dark:border-slate-700 dark:bg-card">
       <div className="flex items-center justify-between pr-4">
         <AccordionTrigger 
-          className={`text-lg font-semibold flex-1 ${!section.is_visible ? 'opacity-50' : ''}`}
+          className={`flex-1 px-4 py-4 text-lg font-semibold hover:no-underline ${!section.is_visible ? 'opacity-50' : ''}`}
         >
           {getSectionTitle('projects', language)} ({section.items.length})
         </AccordionTrigger>
@@ -131,10 +132,10 @@ export function ProjectsSection({ section, language, onUpdate, onToggleVisibilit
           {section.is_visible !== false ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
         </Button>
       </div>
-      <AccordionContent>
+      <AccordionContent className="px-4 pb-4">
         <div className="space-y-4 pt-4">
           {section.items.map((item, index) => (
-            <div key={item.id} className="rounded-lg border bg-muted/50 p-4">
+            <div key={item.id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/60">
               <div className="space-y-3">
                 <div className="flex items-start justify-between">
                   <h4 className="font-semibold">{text.itemTitle} #{index + 1}</h4>
@@ -151,7 +152,7 @@ export function ProjectsSection({ section, language, onUpdate, onToggleVisibilit
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div>
                     <Label>{getFieldLabel('projects', 'name', language)} *</Label>
                     <Input
@@ -170,21 +171,23 @@ export function ProjectsSection({ section, language, onUpdate, onToggleVisibilit
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div>
                     <Label>{getFieldLabel('projects', 'start_date', language)}</Label>
-                    <Input
-                      type="month"
+                    <MonthYearInput
+                      language={language}
                       value={getStringContent(item.content, 'start_date')}
-                      onChange={(e) => updateItemField(index, 'start_date', e.target.value)}
+                      onChange={(value) => updateItemField(index, 'start_date', value)}
+                      placeholder={getFieldPlaceholder('projects', 'start_date', language)}
                     />
                   </div>
                   <div>
                     <Label>{getFieldLabel('projects', 'end_date', language)}</Label>
-                    <Input
-                      type="month"
+                    <MonthYearInput
+                      language={language}
                       value={getStringContent(item.content, 'end_date')}
-                      onChange={(e) => updateItemField(index, 'end_date', e.target.value)}
+                      onChange={(value) => updateItemField(index, 'end_date', value)}
+                      placeholder={getFieldPlaceholder('projects', 'end_date', language)}
                     />
                   </div>
                 </div>
@@ -233,7 +236,7 @@ export function ProjectsSection({ section, language, onUpdate, onToggleVisibilit
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                   <div>
                     <Label>{getFieldLabel('projects', 'url', language)}</Label>
                     <Input
@@ -319,7 +322,16 @@ export function ProjectsSection({ section, language, onUpdate, onToggleVisibilit
               newItems.push({
                 id: `new-${Date.now()}`,
                 section_id: section.id,
-                content: { name: '', role: '', description: '', technologies: [] }
+                content: {
+                  name: '',
+                  role: '',
+                  start_date: '',
+                  end_date: '',
+                  description: '',
+                  technologies: [],
+                  url: '',
+                  github_url: '',
+                }
               });
               onUpdate(section.id, { items: newItems });
             }}

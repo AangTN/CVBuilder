@@ -6,6 +6,7 @@ export type SectionType =
   | 'education' 
   | 'skills' 
   | 'projects' 
+  | 'certifications'
   | 'languages' 
   | 'custom';
 
@@ -57,9 +58,15 @@ export interface HeaderContent {
   email?: string;
   phone?: string;
   location?: string;
+  address?: string;
+  date_of_birth?: string;
+  gender?: string;
   website?: string;
   linkedin?: string;
   github?: string;
+  facebook?: string;
+  twitter?: string;
+  instagram?: string;
   photo_url?: string;
   summary?: string;
   [key: string]: unknown;
@@ -69,6 +76,7 @@ export interface ExperienceContent {
   company: string;
   role: string;
   location?: string;
+  employment_type?: string;
   start_date: string;
   end_date?: string;
   is_current?: boolean;
@@ -125,13 +133,24 @@ export interface ProjectContent {
 export interface LanguageContent {
   name: string;
   proficiency: string;
-  certification?: string;
+  [key: string]: unknown;
+}
+
+export interface CertificationContent {
+  name: string;
+  issuer?: string;
+  issue_date?: string;
+  expiration_date?: string;
+  credential_id?: string;
+  credential_url?: string;
+  description?: string;
   [key: string]: unknown;
 }
 
 export interface CustomContent {
-  label: string;
-  value: string;
+  label?: string;
+  value?: string;
+  text?: string;
   [key: string]: unknown;
 }
 

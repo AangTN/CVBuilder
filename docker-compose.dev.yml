@@ -27,9 +27,11 @@ services:
     environment:
       NODE_ENV: development
       PORT: 3001
+      API_BASE_URL: http://localhost:3001
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-123}@db:5432/${POSTGRES_DB:-cvonline}
       FRONTEND_URL: http://localhost:3000
       FRONTEND_EXPORT_URL: http://frontend:3000
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET}
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
     depends_on:
@@ -50,11 +52,13 @@ services:
     working_dir: /app
     environment:
       NODE_ENV: development
+      API_SERVER_URL: http://backend:3001
       NEXT_PUBLIC_API_URL: http://localhost:3001
       NEXT_PUBLIC_SITE_URL: http://localhost:3000
       NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT}
       NEXT_PUBLIC_GOOGLE_CLIENT: ${GOOGLE_CLIENT}
       EXPORT_RENDER_KEY: ${EXPORT_RENDER_KEY}
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET}
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
     depends_on:

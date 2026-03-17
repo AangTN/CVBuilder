@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -6,22 +7,73 @@ import {
   Delete,
   Body,
   Param,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
   Request,
   Res,
   Header,
   Query,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { AvatarUploadFile } from './cvs-avatar-storage.util';
 import type { Response } from 'express';
 import { CvsService } from './cvs.service';
 import type { CreateCvDto, UpdateCvDto, ExportCvDto } from './cvs.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import type { AuthRequest } from '../../common/types/auth-request.type';
+import { MAX_AVATAR_BYTES } from './cvs-avatar-storage.util';
+import { Public } from '../../common/decorators/public.decorator';
+import type { Request as ExpressRequest } from 'express';
 
 @Controller('cvs')
 @UseGuards(JwtAuthGuard)
 export class CvsController {
   constructor(private readonly cvsService: CvsService) {}
+
+  @Public()
+  @Post('avatar')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: {
+        fileSize: MAX_AVATAR_BYTES,
+      },
+    }),
+  )
+  async uploadAvatar(
+    @Request()
+    req: ExpressRequest & { user?: { userId?: string } },
+    @UploadedFile() file?: AvatarUploadFile,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Vui lòng chọn file ảnh.');
+    }
+
+    const userId = req.user?.userId;
+    const { photoUrl } = await this.cvsService.uploadAvatar(file, userId);
+    const forwardedHost = req.headers['x-forwarded-host'];
+    const forwardedProto = req.headers['x-forwarded-proto'];
+    const host =
+      typeof forwardedHost === 'string'
+        ? forwardedHost.split(',')[0].trim()
+        : req.get('host');
+    const protocol =
+      typeof forwardedProto === 'string'
+        ? forwardedProto.split(',')[0].trim()
+        : req.protocol;
+
+    if (/^https?:\/\//i.test(photoUrl) || !host) {
+      return { photoUrl };
+    }
+
+    const normalizedPath = photoUrl.startsWith('/')
+      ? photoUrl
+      : `/${photoUrl.replace(/^\.?\//, '')}`;
+
+    return {
+      photoUrl: `${protocol}://${host}${normalizedPath}`,
+    };
+  }
 
   @Post()
   async createCv(

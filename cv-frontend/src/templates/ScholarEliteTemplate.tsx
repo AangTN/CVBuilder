@@ -11,6 +11,7 @@ import {
   SkillContent,
   ProjectContent,
   LanguageContent,
+  CertificationContent,
   CustomContent,
   normalizeSkillLevel,
   getSkillLevelLabel,
@@ -18,8 +19,11 @@ import {
 import { A4PageWrapper } from '@/components/cv/A4PageWrapper';
 import { CVPageEngine, CVPageEngineItem } from '@/components/cv/CVPageEngine';
 import { sanitizeRichText } from '@/lib/sanitizeHtml';
+import { formatCvDate, formatCvDateRange } from '@/lib/cvDate';
+import { getSafeImageSrc } from '@/lib/imageUrl';
 import { filterRenderableItems, hasRenderableContent, hasRenderableSection } from './renderVisibility';
 import { normalizeFontSizePreset } from './fontSizePreset';
+import { getCustomPrimaryContent, getExtraFields } from './extraFields';
 
 type TemplateItem = CVPageEngineItem & { render: () => React.ReactNode };
 
@@ -39,6 +43,15 @@ const headingFont = '"Crimson Text", Georgia, "Times New Roman", serif';
 const bodyFontFallback = 'Inter, system-ui, -apple-system, sans-serif';
 const templatePrimaryColor = '#002147';
 const templateSecondaryColor = '#546E7A';
+
+const formatGender = (value?: string): string => {
+  if (!value) return '';
+  const token = value.trim().toLowerCase();
+  if (token === 'male') return 'Male';
+  if (token === 'female') return 'Female';
+  if (token === 'other') return 'Other';
+  return value;
+};
 
 const sectionTitle = (title: string, primaryColor: string, size: SizeClasses) => (
   <div className="mb-1.5 mt-2">
@@ -66,6 +79,11 @@ const renderEducationItem = (
   presentLabel?: string,
 ) => {
   const education = item.content as EducationContent;
+  const dateRange = formatCvDateRange(education.start_date, education.end_date, education.is_current, presentLabel);
+  const extras = getExtraFields(
+    education as Record<string, unknown>,
+    ['institution', 'degree', 'field_of_study', 'location', 'start_date', 'end_date', 'is_current', 'gpa', 'description', 'achievements'],
+  );
   return (
     <div className="mb-1.5 break-inside-avoid" style={{ lineHeight: baseLineHeight }}>
       <div className="flex items-start justify-between gap-3">
@@ -82,9 +100,7 @@ const renderEducationItem = (
           )}
         </div>
         <div className={`text-right ${size.meta}`} style={{ color: secondaryColor }}>
-          <div>
-            {education.start_date} - {education.is_current ? (presentLabel || education.end_date) : education.end_date}
-          </div>
+          {dateRange && <div>{dateRange}</div>}
           {education.location && <div>{education.location}</div>}
         </div>
       </div>
@@ -94,6 +110,16 @@ const renderEducationItem = (
           {education.achievements && education.achievements.length > 0 && (
             <div>Relevant Coursework: {education.achievements.join(', ')}</div>
           )}
+        </div>
+      )}
+      {extras.length > 0 && (
+        <div className={`mt-0.5 ${size.meta} text-slate-700`}>
+          {extras.map((extra) => (
+            <div key={extra.key}>
+              <span className="font-semibold capitalize">{extra.label}: </span>
+              <span>{extra.value}</span>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -108,17 +134,21 @@ const renderResearchExperienceItem = (
   presentLabel?: string,
 ) => {
   const experience = item.content as ExperienceContent;
+  const dateRange = formatCvDateRange(experience.start_date, experience.end_date, experience.is_current, presentLabel);
+  const extras = getExtraFields(
+    experience as Record<string, unknown>,
+    ['company', 'role', 'location', 'employment_type', 'start_date', 'end_date', 'is_current', 'description', 'highlights'],
+  );
   return (
     <div className="mb-1.5 break-inside-avoid" style={{ lineHeight: baseLineHeight }}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1">
           <div className={`${size.itemTitle} font-semibold text-slate-900`}>{experience.role}</div>
           <div className={`${size.itemSub} text-slate-800`}>{experience.company}</div>
+          {experience.employment_type && <div className={`${size.meta} text-slate-700`}>{experience.employment_type}</div>}
         </div>
         <div className={`text-right ${size.meta}`} style={{ color: secondaryColor }}>
-          <div>
-            {experience.start_date} - {experience.is_current ? (presentLabel || experience.end_date) : experience.end_date}
-          </div>
+          {dateRange && <div>{dateRange}</div>}
           {experience.location && <div>{experience.location}</div>}
         </div>
       </div>
@@ -137,6 +167,16 @@ const renderResearchExperienceItem = (
             <li key={index}>{highlight}</li>
           ))}
         </ul>
+      )}
+      {extras.length > 0 && (
+        <div className={`mt-0.5 ${size.meta} text-slate-700`}>
+          {extras.map((extra) => (
+            <div key={extra.key}>
+              <span className="font-semibold capitalize">{extra.label}: </span>
+              <span>{extra.value}</span>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -164,6 +204,12 @@ const renderSkillGroups = (items: CVSectionItem[], baseLineHeight: number, size:
                   const normalizedLevel = normalizeSkillLevel(skill.level);
                   return normalizedLevel ? ` (${getSkillLevelLabel(normalizedLevel, language)})` : '';
                 })()}
+                {(() => {
+                  const extras = getExtraFields(skill as Record<string, unknown>, ['name', 'level', 'category']);
+                  return extras.length > 0
+                    ? ` [${extras.map((extra) => `${extra.label}: ${extra.value}`).join(' | ')}]`
+                    : '';
+                })()}
                 {index < skills.length - 1 && ', '}
               </span>
             ))}
@@ -176,12 +222,28 @@ const renderSkillGroups = (items: CVSectionItem[], baseLineHeight: number, size:
 
 const renderPublicationItem = (item: CVSectionItem, baseLineHeight: number, size: SizeClasses) => {
   const custom = item.content as CustomContent;
+  const customRecord = custom as Record<string, unknown>;
+  const { label, value } = getCustomPrimaryContent(customRecord);
+  const extras = getExtraFields(customRecord, ['label', 'value', 'text']);
+
+  if (!label && !value && extras.length === 0) {
+    return null;
+  }
+
   return (
     <div className="mb-1.5 break-inside-avoid" style={{ lineHeight: baseLineHeight }}>
-      <div className={`${size.body} text-slate-800`}>
-        <span className="font-semibold">{custom.label}: </span>
-        <span dangerouslySetInnerHTML={{ __html: sanitizeRichText(custom.value) }} />
-      </div>
+      {(label || value) && (
+        <div className={`${size.body} text-slate-800`}>
+          {label && <span className="font-semibold">{value ? `${label}: ` : label}</span>}
+          {value && <span dangerouslySetInnerHTML={{ __html: sanitizeRichText(value) }} />}
+        </div>
+      )}
+      {extras.map((extra) => (
+        <div key={extra.key} className={`${size.meta} text-slate-700`}>
+          <span className="font-semibold capitalize">{extra.label}: </span>
+          <span>{extra.value}</span>
+        </div>
+      ))}
     </div>
   );
 };
@@ -193,6 +255,11 @@ const renderProjectItem = (
   size: SizeClasses,
 ) => {
   const project = item.content as ProjectContent;
+  const dateRange = formatCvDateRange(project.start_date, project.end_date);
+  const extras = getExtraFields(
+    project as Record<string, unknown>,
+    ['name', 'role', 'start_date', 'end_date', 'description', 'technologies', 'url', 'github_url'],
+  );
   return (
     <div className="mb-1.5 break-inside-avoid" style={{ lineHeight: baseLineHeight }}>
       <div className="flex items-start justify-between gap-3">
@@ -200,10 +267,9 @@ const renderProjectItem = (
           <div className={`${size.itemTitle} font-semibold text-slate-900`}>{project.name}</div>
           {project.role && <div className={`${size.itemSub} text-slate-800`}>{project.role}</div>}
         </div>
-        {(project.start_date || project.end_date) && (
+        {dateRange && (
           <div className={`text-right ${size.meta}`} style={{ color: secondaryColor }}>
-            {project.start_date || ''}
-            {project.end_date ? ` - ${project.end_date}` : ''}
+            {dateRange}
           </div>
         )}
       </div>
@@ -215,16 +281,87 @@ const renderProjectItem = (
           <span className="font-semibold">Tech:</span> {project.technologies.join(', ')}
         </div>
       )}
+      {extras.map((extra) => (
+        <div key={extra.key} className={`${size.meta} text-slate-700`}>
+          <span className="font-semibold capitalize">{extra.label}: </span>
+          <span>{extra.value}</span>
+        </div>
+      ))}
     </div>
   );
 };
 
 const renderLanguageItem = (item: CVSectionItem, baseLineHeight: number, size: SizeClasses) => {
   const language = item.content as LanguageContent;
+  const extras = getExtraFields(language as Record<string, unknown>, [
+    'name',
+    'proficiency',
+    'certification',
+    'certificate',
+    'cert',
+    'language_certificate',
+    'languageCertification',
+    'chung_chi',
+    'chungChi',
+  ]);
   return (
     <div className={`mb-1 break-inside-avoid ${size.body} text-slate-800`} style={{ lineHeight: baseLineHeight }}>
       <span className="font-semibold">{language.name}</span>
       {language.proficiency && <span>: {language.proficiency}</span>}
+      {extras.length > 0 && (
+        <div className={`${size.meta} text-slate-700`}>
+          {extras.map((extra) => (
+            <div key={extra.key}>
+              <span className="font-semibold capitalize">{extra.label}: </span>
+              <span>{extra.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const renderCertificationItem = (item: CVSectionItem, baseLineHeight: number, size: SizeClasses) => {
+  const cert = item.content as CertificationContent;
+  const dateRange = formatCvDateRange(cert.issue_date, cert.expiration_date);
+  const extras = getExtraFields(cert as Record<string, unknown>, [
+    'name',
+    'issuer',
+    'issue_date',
+    'expiration_date',
+    'credential_id',
+    'credential_url',
+    'description',
+  ]);
+
+  return (
+    <div className={`mb-1.5 break-inside-avoid ${size.body} text-slate-800`} style={{ lineHeight: baseLineHeight }}>
+      {cert.name && <span className="font-semibold">{cert.name}</span>}
+      {cert.issuer && <span>: {cert.issuer}</span>}
+      {dateRange && <div className={`${size.meta} text-slate-700`}>{dateRange}</div>}
+      {(cert.credential_id || cert.credential_url) && (
+        <div className={`${size.meta} text-slate-700`}>
+          {cert.credential_id && (
+            <div>
+              <span className="font-semibold">ID: </span>
+              <span>{cert.credential_id}</span>
+            </div>
+          )}
+          {cert.credential_url && <div className="break-all">{cert.credential_url}</div>}
+        </div>
+      )}
+      {cert.description && <div className={`${size.meta} text-slate-700`}>{cert.description}</div>}
+      {extras.length > 0 && (
+        <div className={`${size.meta} text-slate-700`}>
+          {extras.map((extra) => (
+            <div key={extra.key}>
+              <span className="font-semibold capitalize">{extra.label}: </span>
+              <span>{extra.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -332,19 +469,23 @@ export const ScholarEliteTemplate: React.FC<{ data: CVData; previewMode?: boolea
         id: 'scholar-header',
         type: 'header',
         render: () => {
+          const headerPhotoSrc = getSafeImageSrc(header.photo_url);
           const contactLine = contactJoin([
             header.email || '',
             header.phone || '',
             header.linkedin || '',
             header.github || '',
+            header.facebook || '',
+            header.twitter || '',
+            header.instagram || '',
             header.website || '',
           ]);
 
           return (
             <header className="mb-2 relative" style={{ lineHeight: spacing }}>
-              {header.photo_url && (
+              {headerPhotoSrc && (
                 <Image
-                  src={header.photo_url}
+                  src={headerPhotoSrc}
                   alt={header.full_name}
                   width={64}
                   height={64}
@@ -372,9 +513,25 @@ export const ScholarEliteTemplate: React.FC<{ data: CVData; previewMode?: boolea
                 {header.location && (
                   <p className={`${sizeClasses.contact}`} style={{ color: secondaryColor }}>{header.location}</p>
                 )}
+                {(header.date_of_birth || header.gender) && (
+                  <p className={`${sizeClasses.contact} text-slate-700 mt-0.5`}>
+                    {[header.date_of_birth ? formatCvDate(header.date_of_birth) : '', formatGender(header.gender)]
+                      .filter(Boolean)
+                      .join(' • ')}
+                  </p>
+                )}
                 {header.summary && (
                   <p className={`${sizeClasses.summary} text-slate-700 mt-1 text-justify`}>{header.summary}</p>
                 )}
+                {getExtraFields(
+                  header as Record<string, unknown>,
+                  ['full_name', 'title', 'email', 'phone', 'location', 'address', 'date_of_birth', 'gender', 'website', 'linkedin', 'github', 'facebook', 'twitter', 'instagram', 'photo_url', 'summary'],
+                ).map((extra) => (
+                  <p key={extra.key} className={`${sizeClasses.meta} text-slate-700 mt-0.5`}>
+                    <span className="font-semibold capitalize">{extra.label}: </span>
+                    <span>{extra.value}</span>
+                  </p>
+                ))}
               </div>
             </header>
           );
@@ -456,6 +613,17 @@ export const ScholarEliteTemplate: React.FC<{ data: CVData; previewMode?: boolea
             id: `lang-${item.id}`,
             type: 'content',
             render: () => renderLanguageItem(item, spacing, sizeClasses),
+          });
+        });
+        return;
+      }
+
+      if (section.section_type === 'certifications') {
+        sectionItems.forEach((item) => {
+          result.push({
+            id: `cert-${item.id}`,
+            type: 'content',
+            render: () => renderCertificationItem(item, spacing, sizeClasses),
           });
         });
         return;

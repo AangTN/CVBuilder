@@ -5,20 +5,10 @@ import type { Metadata } from 'next';
 import { PageTransition } from '@/components/ui/page-transition';
 import type { PublicBlogPost } from '@/features/api';
 import { marked } from 'marked';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import { getPublicBlogPostBySlug } from '@/lib/public-data';
 
 async function fetchPost(slug: string): Promise<PublicBlogPost | null> {
-  try {
-    const res = await fetch(`${API_BASE}/blog/posts/${slug}`, {
-      next: { revalidate: 60 },
-    });
-    if (res.status === 404) return null;
-    if (!res.ok) throw new Error('fetch failed');
-    return res.json();
-  } catch {
-    return null;
-  }
+  return getPublicBlogPostBySlug(slug);
 }
 
 export async function generateMetadata({

@@ -79,6 +79,51 @@ export function createCvsApi(client: ApiClient) {
       });
     },
 
+    async uploadAvatar(
+      file: File,
+      accessToken?: string | null,
+    ): Promise<{ photoUrl: string }> {
+      const url = `${client.getBaseUrl()}/cvs/avatar`;
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const headers: Record<string, string> = {};
+      if (accessToken) {
+        headers.Authorization = `Bearer ${accessToken}`;
+      }
+
+      const response = await fetch(url, {
+        method: 'POST',
+        credentials: 'include',
+        headers,
+        body: formData,
+      });
+
+      if (!response.ok) {
+        let message = 'Failed to upload avatar';
+        try {
+          const data = await response.json();
+          message = data?.message || message;
+        } catch {
+          try {
+            const text = await response.text();
+            if (text) {
+              message = text.slice(0, 500);
+            }
+          } catch {
+            // keep default message
+          }
+        }
+
+        throw {
+          message,
+          statusCode: response.status,
+        } as ApiError;
+      }
+
+      return response.json() as Promise<{ photoUrl: string }>;
+    },
+
     async exportCvPdf(
       accessToken: string,
       payload: { cvId: string; filename?: string },

@@ -18,7 +18,17 @@ interface LanguagesSectionProps {
   onToggleVisibility: (sectionId: string, currentVisibility: boolean) => void;
 }
 
-const standardLanguageFields = ['name', 'proficiency', 'certification'];
+const standardLanguageFields = [
+  'name',
+  'proficiency',
+  'certification',
+  'certificate',
+  'cert',
+  'language_certificate',
+  'languageCertification',
+  'chung_chi',
+  'chungChi',
+];
 
 const LANGUAGE_SECTION_TEXTS: Record<Language, {
   itemTitle: string;
@@ -104,10 +114,10 @@ export function LanguagesSection({ section, language, onUpdate, onToggleVisibili
   };
 
   return (
-    <AccordionItem value="languages">
+    <AccordionItem value="languages" className="rounded-xl border-2 border-gray-200 bg-white px-1 dark:border-slate-700 dark:bg-card">
       <div className="flex items-center justify-between pr-4">
         <AccordionTrigger 
-          className={`text-lg font-semibold flex-1 ${!section.is_visible ? 'opacity-50' : ''}`}
+          className={`flex-1 px-4 py-4 text-lg font-semibold hover:no-underline ${!section.is_visible ? 'opacity-50' : ''}`}
         >
           {getSectionTitle('languages', language)} ({section.items.length})
         </AccordionTrigger>
@@ -123,10 +133,10 @@ export function LanguagesSection({ section, language, onUpdate, onToggleVisibili
           {section.is_visible !== false ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
         </Button>
       </div>
-      <AccordionContent>
+      <AccordionContent className="px-4 pb-4">
         <div className="space-y-4 pt-4">
           {section.items.map((item, index) => (
-            <div key={item.id} className="rounded-lg border bg-muted/50 p-4">
+            <div key={item.id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/60">
               <div className="space-y-3">
                 <div className="flex items-start justify-between">
                   <h4 className="font-semibold">{text.itemTitle} #{index + 1}</h4>
@@ -165,15 +175,6 @@ export function LanguagesSection({ section, language, onUpdate, onToggleVisibili
                       <option value="Beginner">Beginner</option>
                     </SimpleSelect>
                   </div>
-                </div>
-
-                <div>
-                  <Label>{getFieldLabel('languages', 'certification', language)}</Label>
-                  <Input
-                    placeholder={getFieldPlaceholder('languages', 'certification', language)}
-                    value={getStringContent(item.content, 'certification')}
-                    onChange={(e) => updateItemField(index, 'certification', e.target.value)}
-                  />
                 </div>
 
                 <details className="rounded-lg border border-dashed p-3">
@@ -241,7 +242,7 @@ export function LanguagesSection({ section, language, onUpdate, onToggleVisibili
               newItems.push({
                 id: `new-${Date.now()}`,
                 section_id: section.id,
-                content: { name: '', proficiency: 'Intermediate', certification: '' }
+                content: { name: '', proficiency: 'Intermediate' }
               });
               onUpdate(section.id, { items: newItems });
             }}

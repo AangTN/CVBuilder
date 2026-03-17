@@ -9,7 +9,13 @@ import { Prisma } from '@prisma/client';
 import { CvsRepository } from './cvs.repository';
 import { PdfService } from './pdf.service';
 import { PrismaService } from '../../prisma.service';
-import { deleteOldPhoto, processPhotoUrl } from './cvs-avatar-storage.util';
+import {
+  AvatarUploadFile,
+  deleteOldPhoto,
+  isManagedUploadPhotoUrl,
+  processPhotoUrl,
+  storeUploadedAvatar,
+} from './cvs-avatar-storage.util';
 import {
   getPhotoUrlFromContent,
   isJsonContentObject,
@@ -34,6 +40,25 @@ export class CvsService {
     private readonly prisma: PrismaService,
     private readonly pdfService: PdfService,
   ) {}
+
+  async uploadAvatar(file: AvatarUploadFile, userId?: string) {
+    const ownerKey = userId ? `user-${userId}` : 'guest';
+    this.logger.log(`Uploading avatar for: ${ownerKey}`);
+    const photoUrl = await storeUploadedAvatar(
+      file,
+      ownerKey,
+      this.logger,
+    );
+
+    return { photoUrl };
+  }
+
+  private isInvalidSectionTypeError(error: unknown): boolean {
+    return (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2007'
+    );
+  }
 
   private toSectionType(value: string): SectionType {
     if ((SECTION_TYPES as readonly string[]).includes(value)) {
@@ -77,14 +102,39 @@ export class CvsService {
     let previousPhotoUrl = oldPhotoUrl;
 
     for (const section of sections) {
-      const cvSection = await this.cvsRepository.createSection({
-        section_type: this.toSectionType(section.section_type),
-        title: section.title,
-        is_visible: section.is_visible ?? true,
-        cvs: {
-          connect: { id: cvId },
-        },
-      });
+      const normalizedSectionType = this.toSectionType(section.section_type);
+
+      let cvSection: Awaited<ReturnType<CvsRepository['createSection']>>;
+      try {
+        cvSection = await this.cvsRepository.createSection({
+          section_type: normalizedSectionType,
+          title: section.title,
+          is_visible: section.is_visible ?? true,
+          cvs: {
+            connect: { id: cvId },
+          },
+        });
+      } catch (error) {
+        if (
+          normalizedSectionType !== 'custom' &&
+          this.isInvalidSectionTypeError(error)
+        ) {
+          this.logger.warn(
+            `Section type \"${normalizedSectionType}\" is not supported by current DB enum. Falling back to \"custom\". Please run latest Prisma migrations.`,
+          );
+
+          cvSection = await this.cvsRepository.createSection({
+            section_type: 'custom',
+            title: section.title,
+            is_visible: section.is_visible ?? true,
+            cvs: {
+              connect: { id: cvId },
+            },
+          });
+        } else {
+          throw error;
+        }
+      }
 
       for (const item of section.items) {
         let processedContent = sanitizeContent(item.content);
@@ -103,7 +153,7 @@ export class CvsService {
           if (
             previousPhotoUrl &&
             previousPhotoUrl !== newPhotoUrl &&
-            previousPhotoUrl.startsWith('/uploads/')
+            isManagedUploadPhotoUrl(previousPhotoUrl)
           ) {
             await deleteOldPhoto(previousPhotoUrl, this.logger);
             previousPhotoUrl = undefined;

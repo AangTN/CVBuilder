@@ -5,15 +5,26 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
+import { json, urlencoded } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
+  // 10MB image uploaded as base64 is larger than raw bytes, so keep parser limit higher.
+  const bodyLimit = process.env.REQUEST_BODY_LIMIT || '20mb';
+
+  app.use(json({ limit: bodyLimit }));
+  app.use(urlencoded({ extended: true, limit: bodyLimit }));
+
   // Enable cookie parser
   app.use(cookieParser());
 
-  // Secure HTTP headers
-  app.use(helmet());
+  // Secure HTTP headers while allowing frontend origin to embed uploaded images.
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
 
   // Global input validation – strip unknown fields, reject if validation fails
   app.useGlobalPipes(
@@ -47,7 +58,7 @@ async function bootstrap() {
   });
 
   // Serve static files from uploads directory
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
     prefix: '/uploads/',
   });
 

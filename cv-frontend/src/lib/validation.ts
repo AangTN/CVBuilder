@@ -149,6 +149,9 @@ export function getValidatorByFieldType(fieldType: string): ((value: string) => 
     website: validateUrl,
     linkedin: validateUrl,
     github: validateUrl,
+    facebook: validateUrl,
+    twitter: validateUrl,
+    instagram: validateUrl,
   };
 
   return validators[fieldType] || null;

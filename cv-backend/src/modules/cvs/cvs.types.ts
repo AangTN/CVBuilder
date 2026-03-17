@@ -7,6 +7,7 @@ export const SECTION_TYPES = [
   'skills',
   'projects',
   'languages',
+  'certifications',
   'custom',
 ] as const;
 

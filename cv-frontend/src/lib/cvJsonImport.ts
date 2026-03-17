@@ -14,6 +14,7 @@ const SECTION_ORDER: SectionType[] = [
   'education',
   'skills',
   'projects',
+  'certifications',
   'languages',
   'custom',
 ];

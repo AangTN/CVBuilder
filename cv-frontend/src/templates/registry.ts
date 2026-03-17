@@ -1,15 +1,11 @@
 import { ModernTemplate } from "./ModernTemplate";
 import { ClassicSplitTemplate } from "./ClassicSplitTemplate";
 import { TechTerminalTemplate } from "./TechTerminalTemplate";
-import { ElectricGradientTemplate } from "./ElectricGradientTemplate";
-import { NeonPulseTemplate } from "./NeonPulseTemplate";
 import { ScholarEliteTemplate } from "./ScholarEliteTemplate";
 import {
   MODERN_SAMPLE_DATA,
   CLASSIC_SPLIT_SAMPLE_DATA,
   TECH_TERMINAL_SAMPLE_DATA,
-  ELECTRIC_GRADIENT_SAMPLE_DATA,
-  NEON_PULSE_SAMPLE_DATA,
   SCHOLAR_ELITE_SAMPLE_DATA,
 } from "./sampleData";
 import { CVData } from "@/lib/types";
@@ -49,24 +45,6 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryItem> = {
     sampleData: TECH_TERMINAL_SAMPLE_DATA,
     description: "Command-line inspired CV with mono font and terminal styling",
     category: 'tech',
-  },
-  "b043cc09-d9e3-4579-a08c-c7eaac82b26b": {
-    id: "b043cc09-d9e3-4579-a08c-c7eaac82b26b",
-    name: "Electric Gradient",
-    component: ElectricGradientTemplate,
-    sampleData: ELECTRIC_GRADIENT_SAMPLE_DATA,
-    description: "Bold gradient flow with modern visual rhythm and artistic impact",
-    category: 'creative',
-    featured: true,
-  },
-  "ffa13d75-13e4-47c2-a583-5b988f43650a": {
-    id: "ffa13d75-13e4-47c2-a583-5b988f43650a",
-    name: "Neon Pulse",
-    component: NeonPulseTemplate,
-    sampleData: NEON_PULSE_SAMPLE_DATA,
-    description: "Dark neon energy with bold tech personality and strong visual impact",
-    category: 'creative',
-    featured: true,
   },
   "7a24c891-6f61-44c7-be80-34c84372e387": {
     id: "7a24c891-6f61-44c7-be80-34c84372e387",

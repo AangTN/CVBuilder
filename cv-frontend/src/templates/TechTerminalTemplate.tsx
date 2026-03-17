@@ -11,6 +11,7 @@ import {
   SkillContent,
   ProjectContent,
   LanguageContent,
+  CertificationContent,
   CustomContent,
   normalizeSkillLevel,
   getSkillLevelLabel,
@@ -19,6 +20,9 @@ import { A4PageWrapper } from '@/components/cv/A4PageWrapper';
 import { CVPageEngine, CVPageEngineItem } from '@/components/cv/CVPageEngine';
 import { filterRenderableItems, hasRenderableSection } from './renderVisibility';
 import { normalizeFontSizePreset } from './fontSizePreset';
+import { getCustomPrimaryContent, getExtraFields } from './extraFields';
+import { formatCvDate, formatCvDateRange } from '@/lib/cvDate';
+import { getSafeImageSrc } from '@/lib/imageUrl';
 
 const Line: React.FC<{ children: React.ReactNode; dim?: boolean; className?: string }> = ({ children, dim, className }) => (
   <div className={`${dim ? 'text-green-300/70' : 'text-green-300'}${className ? ` ${className}` : ''}`}>
@@ -33,13 +37,28 @@ const SectionTitle: React.FC<{ title: string; sizeClass?: string }> = ({ title, 
   </div>
 );
 
+const formatGender = (value?: string): string => {
+  if (!value) return '';
+  const token = value.trim().toLowerCase();
+  if (token === 'male') return 'Male';
+  if (token === 'female') return 'Female';
+  if (token === 'other') return 'Other';
+  return value;
+};
+
 const renderExperience = (item: CVSectionItem, presentLabel?: string) => {
   const exp = item.content as ExperienceContent;
+  const dateRange = formatCvDateRange(exp.start_date, exp.end_date, exp.is_current, presentLabel);
+  const extras = getExtraFields(
+    exp as Record<string, unknown>,
+    ['company', 'role', 'location', 'employment_type', 'start_date', 'end_date', 'is_current', 'description', 'highlights'],
+  );
   return (
     <div className="mb-2 rounded border border-emerald-500/20 bg-emerald-500/[0.03] px-2 py-1.5">
       <Line>
-        [{exp.start_date} - {exp.is_current ? (presentLabel || exp.end_date) : exp.end_date}] {exp.role} @ {exp.company}
+        {dateRange ? `[${dateRange}] ` : ''}{exp.role} @ {exp.company}
       </Line>
+      {exp.employment_type && <Line dim>employment: {exp.employment_type}</Line>}
       {exp.location && <Line dim>location: {exp.location}</Line>}
       {exp.description && (
         <Line dim>
@@ -53,20 +72,31 @@ const renderExperience = (item: CVSectionItem, presentLabel?: string) => {
           ))}
         </div>
       )}
+      {extras.map((extra) => (
+        <Line key={extra.key} dim>{extra.label}: {extra.value}</Line>
+      ))}
     </div>
   );
 };
 
 const renderEducation = (item: CVSectionItem, presentLabel?: string) => {
   const edu = item.content as EducationContent;
+  const dateRange = formatCvDateRange(edu.start_date, edu.end_date, edu.is_current, presentLabel);
+  const extras = getExtraFields(
+    edu as Record<string, unknown>,
+    ['institution', 'degree', 'field_of_study', 'location', 'start_date', 'end_date', 'is_current', 'gpa', 'description', 'achievements'],
+  );
   return (
     <div className="mb-2 rounded border border-emerald-500/20 bg-emerald-500/[0.03] px-2 py-1.5">
       <Line>
-        [{edu.start_date} - {edu.is_current ? (presentLabel || edu.end_date) : edu.end_date}] {edu.degree} @ {edu.institution}
+        {dateRange ? `[${dateRange}] ` : ''}{edu.degree} @ {edu.institution}
       </Line>
       {edu.field_of_study && <Line dim>field: {edu.field_of_study}</Line>}
       {edu.location && <Line dim>location: {edu.location}</Line>}
       {edu.gpa && <Line dim>gpa: {edu.gpa}</Line>}
+      {extras.map((extra) => (
+        <Line key={extra.key} dim>{extra.label}: {extra.value}</Line>
+      ))}
     </div>
   );
 };
@@ -74,37 +104,116 @@ const renderEducation = (item: CVSectionItem, presentLabel?: string) => {
 const renderSkill = (item: CVSectionItem, language?: string) => {
   const skill = item.content as SkillContent;
   const normalizedLevel = normalizeSkillLevel(skill.level);
+  const extras = getExtraFields(skill as Record<string, unknown>, ['name', 'level', 'category']);
   return (
     <Line dim>
       - {skill.name}
       {normalizedLevel ? ` (${getSkillLevelLabel(normalizedLevel, language)})` : ''}
+      {extras.length > 0
+        ? ` | ${extras.map((extra) => `${extra.label}: ${extra.value}`).join(' | ')}`
+        : ''}
     </Line>
   );
 };
 
 const renderProject = (item: CVSectionItem) => {
   const project = item.content as ProjectContent;
+  const dateRange = formatCvDateRange(project.start_date, project.end_date);
+  const extras = getExtraFields(
+    project as Record<string, unknown>,
+    ['name', 'role', 'start_date', 'end_date', 'description', 'technologies', 'url', 'github_url'],
+  );
   return (
     <div className="mb-2 rounded border border-emerald-500/20 bg-emerald-500/[0.03] px-2 py-1.5">
       <Line>{project.name}{project.role ? ` :: ${project.role}` : ''}</Line>
+      {dateRange && <Line dim>timeline: {dateRange}</Line>}
       {project.description && <Line dim>{project.description}</Line>}
       {project.technologies && project.technologies.length > 0 && (
         <Line dim>tech: {project.technologies.join(', ')}</Line>
       )}
       {project.url && <Line dim>url: {project.url}</Line>}
       {project.github_url && <Line dim>github: {project.github_url}</Line>}
+      {extras.map((extra) => (
+        <Line key={extra.key} dim>{extra.label}: {extra.value}</Line>
+      ))}
     </div>
   );
 };
 
 const renderLanguage = (item: CVSectionItem) => {
   const lang = item.content as LanguageContent;
-  return <Line dim>- {lang.name}: {lang.proficiency}</Line>;
+  const extras = getExtraFields(lang as Record<string, unknown>, [
+    'name',
+    'proficiency',
+    'certification',
+    'certificate',
+    'cert',
+    'language_certificate',
+    'languageCertification',
+    'chung_chi',
+    'chungChi',
+  ]);
+  return (
+    <div>
+      <Line dim>
+        - {lang.name}
+        {lang.proficiency ? `: ${lang.proficiency}` : ''}
+      </Line>
+      {extras.map((extra) => (
+        <Line key={extra.key} dim>{extra.label}: {extra.value}</Line>
+      ))}
+    </div>
+  );
+};
+
+const renderCertification = (item: CVSectionItem) => {
+  const cert = item.content as CertificationContent;
+  const dateRange = formatCvDateRange(cert.issue_date, cert.expiration_date);
+  const extras = getExtraFields(cert as Record<string, unknown>, [
+    'name',
+    'issuer',
+    'issue_date',
+    'expiration_date',
+    'credential_id',
+    'credential_url',
+    'description',
+  ]);
+
+  return (
+    <div className="mb-2 rounded border border-emerald-500/20 bg-emerald-500/[0.03] px-2 py-1.5">
+      <Line>{cert.name || 'Certification'}{cert.issuer ? ` :: ${cert.issuer}` : ''}</Line>
+      {dateRange && <Line dim>timeline: {dateRange}</Line>}
+      {cert.credential_id && <Line dim>credential id: {cert.credential_id}</Line>}
+      {cert.credential_url && <Line dim>credential url: {cert.credential_url}</Line>}
+      {cert.description && <Line dim>{cert.description}</Line>}
+      {extras.map((extra) => (
+        <Line key={extra.key} dim>{extra.label}: {extra.value}</Line>
+      ))}
+    </div>
+  );
 };
 
 const renderCustom = (item: CVSectionItem) => {
   const custom = item.content as CustomContent;
-  return <Line dim>{custom.label}: {custom.value}</Line>;
+  const customRecord = custom as Record<string, unknown>;
+  const { label, value } = getCustomPrimaryContent(customRecord);
+  const plainValue = value.replace(/<[^>]*>/g, '');
+  const extras = getExtraFields(customRecord, ['label', 'value', 'text']);
+
+  if (!label && !plainValue && extras.length === 0) {
+    return null;
+  }
+
+  return (
+    <div>
+      {(label || plainValue) && (
+        <Line dim>{label ? `${label}${plainValue ? ':' : ''}` : ''}{plainValue ? `${label ? ' ' : ''}${plainValue}` : ''}</Line>
+      )}
+      {extras.map((extra) => (
+        <Line key={extra.key} dim>{extra.label}: {extra.value}</Line>
+      ))}
+    </div>
+  );
 };
 
 type TemplateItem = CVPageEngineItem & { render: () => React.ReactNode };
@@ -157,6 +266,7 @@ export const TechTerminalTemplate: React.FC<{ data: CVData; previewMode?: boolea
   const headerSection = data.sections.find(s => s.section_type === 'header');
   const headerItem = headerSection?.is_visible === false ? undefined : filterRenderableItems(headerSection?.items)[0];
   const header = headerItem?.content as HeaderContent | undefined;
+  const headerPhotoSrc = getSafeImageSrc(header?.photo_url);
 
   const items: TemplateItem[] = React.useMemo(() => {
     if (!data?.sections) return [];
@@ -170,9 +280,9 @@ export const TechTerminalTemplate: React.FC<{ data: CVData; previewMode?: boolea
         render: () => (
           <div className={`mb-3 ${sizeClasses.body}`}>
             <div className="flex items-start gap-3">
-              {header.photo_url && (
+              {headerPhotoSrc && (
                 <Image
-                  src={header.photo_url}
+                  src={headerPhotoSrc}
                   alt={header.full_name}
                   width={112}
                   height={112}
@@ -187,15 +297,26 @@ export const TechTerminalTemplate: React.FC<{ data: CVData; previewMode?: boolea
                   </Line>
                 )}
                 {header.summary && <Line dim>{header.summary}</Line>}
+                {getExtraFields(
+                  header as Record<string, unknown>,
+                  ['full_name', 'title', 'email', 'phone', 'location', 'address', 'date_of_birth', 'gender', 'website', 'linkedin', 'github', 'facebook', 'twitter', 'instagram', 'photo_url', 'summary'],
+                ).map((extra) => (
+                  <Line key={extra.key} dim>{extra.label}: {extra.value}</Line>
+                ))}
               </div>
             </div>
             <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-0.5">
               {header.email && <Line dim>email: {header.email}</Line>}
               {header.phone && <Line dim>phone: {header.phone}</Line>}
               {header.location && <Line dim>location: {header.location}</Line>}
+              {header.date_of_birth && <Line dim>dob: {formatCvDate(header.date_of_birth)}</Line>}
+              {header.gender && <Line dim>gender: {formatGender(header.gender)}</Line>}
               {header.website && <Line dim>site: {header.website}</Line>}
               {header.github && <Line dim>github: {header.github}</Line>}
               {header.linkedin && <Line dim>linkedin: {header.linkedin}</Line>}
+              {header.facebook && <Line dim>facebook: {header.facebook}</Line>}
+              {header.twitter && <Line dim>twitter: {header.twitter}</Line>}
+              {header.instagram && <Line dim>instagram: {header.instagram}</Line>}
             </div>
           </div>
         ),
@@ -235,6 +356,10 @@ export const TechTerminalTemplate: React.FC<{ data: CVData; previewMode?: boolea
         sectionItems.forEach(item => {
           result.push({ id: `lang-${item.id}`, type: 'content', render: () => <div className={sizeClasses.body}>{renderLanguage(item)}</div> });
         });
+      } else if (section.section_type === 'certifications') {
+        sectionItems.forEach(item => {
+          result.push({ id: `cert-${item.id}`, type: 'content', render: () => <div className={sizeClasses.body}>{renderCertification(item)}</div> });
+        });
       } else if (section.section_type === 'custom') {
         sectionItems.forEach(item => {
           result.push({ id: `custom-${item.id}`, type: 'content', render: () => <div className={sizeClasses.body}>{renderCustom(item)}</div> });
@@ -247,7 +372,7 @@ export const TechTerminalTemplate: React.FC<{ data: CVData; previewMode?: boolea
     });
 
     return result;
-  }, [data, header, sizeClasses.section, sizeClasses.avatar, sizeClasses.name, sizeClasses.body, presentLabel]);
+  }, [data, header, headerPhotoSrc, sizeClasses.section, sizeClasses.avatar, sizeClasses.name, sizeClasses.body, presentLabel]);
 
   return (
     <div className="tech-terminal-template cv-template-root">

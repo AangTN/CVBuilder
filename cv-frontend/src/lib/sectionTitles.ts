@@ -38,6 +38,13 @@ export const SECTION_TITLES: Record<SectionType, Record<Language, string>> = {
     ko: '프로젝트',
     zh: '项目经验',
   },
+  certifications: {
+    vi: 'Chứng Chỉ',
+    en: 'Certifications',
+    ja: '資格・認定',
+    ko: '자격증',
+    zh: '证书与认证',
+  },
   languages: {
     vi: 'Ngôn Ngữ',
     en: 'Languages',
