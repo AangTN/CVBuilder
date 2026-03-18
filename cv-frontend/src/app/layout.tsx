@@ -1,6 +1,6 @@
 import "./globals.css";
+import localFont from "next/font/local";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import { LayoutShell } from "@/components/layout/LayoutShell";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { AuthProvider } from "@/context/AuthContext";
@@ -8,14 +8,16 @@ import { Toaster } from "sonner";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
-const geistSans = Geist({
+const geistSans = localFont({
+  src: "../../public/font/Geist-VariableFont_wght.ttf", // Trỏ đúng vào file Tuấn vừa copy
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  weight: "100 900", // Khai báo tầm hoạt động của font biến thể
 });
 
-const geistMono = Geist_Mono({
+const geistMono = localFont({
+  src: "../../public/font/GeistMono-VariableFont_wght.ttf", // Trỏ đúng vào file Tuấn vừa copy
   variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: "100 900", // Khai báo tầm hoạt động của font biến thể
 });
 
 export const metadata: Metadata = {
