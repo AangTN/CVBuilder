@@ -9,6 +9,7 @@ RUN npm ci
 FROM deps AS builder
 COPY tsconfig*.json ./
 COPY nest-cli.json ./
+COPY prisma.config.ts ./
 COPY prisma ./prisma
 COPY src ./src
 RUN npx prisma generate
