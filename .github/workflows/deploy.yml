@@ -165,6 +165,6 @@ jobs:
             docker compose up -d --remove-orphans
 
             docker compose exec -T db sh -c 'until pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do sleep 2; done'
-            docker compose exec backend npx prisma migrate deploy
+            docker compose exec -T -e DATABASE_URL backend npx prisma migrate deploy
 
             docker image prune -f
