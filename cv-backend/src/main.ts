@@ -9,7 +9,7 @@ import { json, urlencoded } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-
+  app.setGlobalPrefix('api');
   // 10MB image uploaded as base64 is larger than raw bytes, so keep parser limit higher.
   const bodyLimit = process.env.REQUEST_BODY_LIMIT || '20mb';
 
