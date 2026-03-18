@@ -1,65 +1,113 @@
 services:
   db:
     image: postgres:16-alpine
-    container_name: cv-postgres
+    container_name: cvbuilder-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123}
       POSTGRES_DB: ${POSTGRES_DB:-cvonline}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5434}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-cvonline}"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 20s
+
+  db-seed:
+    image: postgres:16-alpine
+    container_name: cvbuilder-db-seed
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-cvonline}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - ./cv-backend/cvonline.sql:/seed/cvonline.sql:ro
+      - ./docker/db-seed-if-empty.sh:/seed/db-seed-if-empty.sh:ro
+    entrypoint: ["/bin/sh", "/seed/db-seed-if-empty.sh"]
 
   backend:
     build:
       context: ./cv-backend
       dockerfile: Dockerfile
-    container_name: cv-backend
+    container_name: cvbuilder-backend
     restart: unless-stopped
     env_file:
       - ./cv-backend/.env
     environment:
       NODE_ENV: production
-      PORT: 3001
-      API_BASE_URL: http://${VPS_IP:-160.250.246.44}:3001
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-123}@db:5432/${POSTGRES_DB:-cvonline}
-      FRONTEND_URL: http://${VPS_IP:-160.250.246.44}:3000
-      FRONTEND_EXPORT_URL: http://frontend:3000
-      REVALIDATE_SECRET: ${REVALIDATE_SECRET}
+      PORT: 3002
+      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-cvonline}}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+      FRONTEND_EXPORT_URL: ${FRONTEND_EXPORT_URL:-http://frontend:3000}
+      API_BASE_URL: ${API_BASE_URL:-http://localhost:3001}
+      REQUEST_BODY_LIMIT: ${REQUEST_BODY_LIMIT:-20mb}
+      PDF_MAX_CONCURRENT: ${PDF_MAX_CONCURRENT:-3}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT: ${GOOGLE_CLIENT:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      EXPORT_RENDER_KEY: ${EXPORT_RENDER_KEY:-}
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET:-}
     depends_on:
       db:
         condition: service_healthy
+      db-seed:
+        condition: service_completed_successfully
     ports:
-      - "3001:3001"
+      - "${API_PORT:-3002}:3002"
     volumes:
       - ./cv-backend/uploads:/app/uploads
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3002').then(()=>process.exit(0)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   frontend:
     build:
       context: ./cv-frontend
       dockerfile: Dockerfile
-    container_name: cv-frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-}
+        NEXT_PUBLIC_GOOGLE_CLIENT: ${NEXT_PUBLIC_GOOGLE_CLIENT:-}
+    container_name: cvbuilder-frontend
     restart: unless-stopped
+    env_file:
+      - ./cv-frontend/.env
     environment:
       NODE_ENV: production
-      API_SERVER_URL: http://backend:3001
-      NEXT_PUBLIC_API_URL: http://${VPS_IP:-160.250.246.44}:3001
-      NEXT_PUBLIC_SITE_URL: http://${VPS_IP:-160.250.246.44}:3000
-      NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT}
-      NEXT_PUBLIC_GOOGLE_CLIENT: ${GOOGLE_CLIENT}
-      EXPORT_RENDER_KEY: ${EXPORT_RENDER_KEY}
-      REVALIDATE_SECRET: ${REVALIDATE_SECRET}
+      PORT: 3000
+      API_SERVER_URL: ${API_SERVER_URL:-http://backend:3001}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-}
+      NEXT_PUBLIC_GOOGLE_CLIENT: ${NEXT_PUBLIC_GOOGLE_CLIENT:-}
+      EXPORT_RENDER_KEY: ${EXPORT_RENDER_KEY:-}
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET:-}
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
-      - "3000:3000"
+      - "${HTTP_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(()=>process.exit(0)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
 volumes:
   postgres_data:

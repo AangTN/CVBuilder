@@ -1,0 +1,163 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-build:
+    name: Validate Build Before Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Frontend install, lint, build
+        working-directory: cv-frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3001
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: placeholder-google-client-id
+          NEXT_PUBLIC_GOOGLE_CLIENT: placeholder-google-client-id
+          EXPORT_RENDER_KEY: placeholder-export-key
+          REVALIDATE_SECRET: placeholder-revalidate-secret
+          API_SERVER_URL: http://localhost:3001
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+          npm run lint --if-present || true
+          npm run build --if-present
+
+      - name: Backend install and build
+        working-directory: cv-backend
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+          npm run build --if-present
+
+      - name: Create placeholder env files for compose validation
+        run: |
+          printf "DATABASE_URL=\"postgresql://postgres:postgres@db:5432/cvonline\"\nPORT=\"3001\"\nNODE_ENV=\"production\"\nFRONTEND_URL=\"http://localhost:3000\"\nFRONTEND_EXPORT_URL=\"http://frontend:3000\"\nAPI_BASE_URL=\"http://localhost:3001\"\nREQUEST_BODY_LIMIT=\"20mb\"\nPDF_MAX_CONCURRENT=\"3\"\nACCESS_TOKEN_SECRET=\"placeholder\"\nREFRESH_TOKEN_SECRET=\"placeholder\"\nGOOGLE_CLIENT_ID=\"placeholder\"\nGOOGLE_CLIENT=\"placeholder\"\nGROQ_API_KEY=\"placeholder\"\nEXPORT_RENDER_KEY=\"placeholder\"\nREVALIDATE_SECRET=\"placeholder\"\n" > cv-backend/.env
+          printf "NODE_ENV=\"production\"\nPORT=\"3000\"\nAPI_SERVER_URL=\"http://backend:3001\"\nNEXT_PUBLIC_API_URL=\"http://localhost:3001\"\nNEXT_PUBLIC_SITE_URL=\"http://localhost:3000\"\nNEXT_PUBLIC_GOOGLE_CLIENT_ID=\"placeholder\"\nNEXT_PUBLIC_GOOGLE_CLIENT=\"placeholder\"\nEXPORT_RENDER_KEY=\"placeholder\"\nREVALIDATE_SECRET=\"placeholder\"\n" > cv-frontend/.env
+
+      - name: Validate Docker Compose
+        run: docker compose -f docker-compose.yml config >/dev/null
+
+  deploy-vps:
+    name: Deploy To VPS (Docker Compose + Prisma Migrate)
+    runs-on: ubuntu-latest
+    needs: validate-build
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          API_PORT: ${{ secrets.API_PORT }}
+          HTTP_PORT: ${{ secrets.HTTP_PORT }}
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          API_SERVER_URL: ${{ secrets.API_SERVER_URL }}
+          FRONTEND_EXPORT_URL: ${{ secrets.FRONTEND_EXPORT_URL }}
+          ACCESS_TOKEN_SECRET: ${{ secrets.ACCESS_TOKEN_SECRET }}
+          REFRESH_TOKEN_SECRET: ${{ secrets.REFRESH_TOKEN_SECRET }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          EXPORT_RENDER_KEY: ${{ secrets.EXPORT_RENDER_KEY }}
+          REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+          REQUEST_BODY_LIMIT: ${{ secrets.REQUEST_BODY_LIMIT }}
+          PDF_MAX_CONCURRENT: ${{ secrets.PDF_MAX_CONCURRENT }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT != '' && secrets.VPS_PORT || '22' }}
+          envs: POSTGRES_DB,POSTGRES_USER,POSTGRES_PASSWORD,DB_PORT,API_PORT,HTTP_PORT,FRONTEND_URL,API_BASE_URL,NEXT_PUBLIC_SITE_URL,NEXT_PUBLIC_API_URL,API_SERVER_URL,FRONTEND_EXPORT_URL,ACCESS_TOKEN_SECRET,REFRESH_TOKEN_SECRET,GOOGLE_CLIENT_ID,NEXT_PUBLIC_GOOGLE_CLIENT_ID,GROQ_API_KEY,EXPORT_RENDER_KEY,REVALIDATE_SECRET,REQUEST_BODY_LIMIT,PDF_MAX_CONCURRENT
+          script_stop: true
+          script: |
+            set -e
+
+            APP_DIR="${{ secrets.VPS_APP_DIR }}"
+            REPO_URL="${{ secrets.VPS_REPO_URL }}"
+
+            POSTGRES_DB="${POSTGRES_DB:-cvonline}"
+            POSTGRES_USER="${POSTGRES_USER:-postgres}"
+            POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-postgres}"
+            DB_PORT="${DB_PORT:-5432}"
+            API_PORT="${API_PORT:-3001}"
+            HTTP_PORT="${HTTP_PORT:-3000}"
+
+            FRONTEND_URL="${FRONTEND_URL:-http://localhost:${HTTP_PORT}}"
+            API_BASE_URL="${API_BASE_URL:-http://localhost:${API_PORT}}"
+            NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-$FRONTEND_URL}"
+            NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-$API_BASE_URL}"
+            API_SERVER_URL="${API_SERVER_URL:-http://backend:3001}"
+            FRONTEND_EXPORT_URL="${FRONTEND_EXPORT_URL:-http://frontend:3000}"
+
+            REQUEST_BODY_LIMIT="${REQUEST_BODY_LIMIT:-20mb}"
+            PDF_MAX_CONCURRENT="${PDF_MAX_CONCURRENT:-3}"
+
+            GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID:-}"
+            NEXT_PUBLIC_GOOGLE_CLIENT_ID="${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-$GOOGLE_CLIENT_ID}"
+            GOOGLE_CLIENT="$GOOGLE_CLIENT_ID"
+            NEXT_PUBLIC_GOOGLE_CLIENT="$NEXT_PUBLIC_GOOGLE_CLIENT_ID"
+
+            DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}"
+
+            for required_var in ACCESS_TOKEN_SECRET REFRESH_TOKEN_SECRET EXPORT_RENDER_KEY REVALIDATE_SECRET; do
+              eval "required_value=\${$required_var}"
+              if [ -z "$required_value" ]; then
+                echo "Missing required secret: $required_var"
+                exit 1
+              fi
+            done
+
+            if [ ! -d "$APP_DIR/.git" ]; then
+              mkdir -p "$(dirname "$APP_DIR")"
+              git clone "$REPO_URL" "$APP_DIR"
+            fi
+
+            cd "$APP_DIR"
+            git fetch origin main
+            git checkout main
+            git pull --ff-only origin main
+
+            printf "POSTGRES_DB=\"%s\"\nPOSTGRES_USER=\"%s\"\nPOSTGRES_PASSWORD=\"%s\"\nDB_PORT=\"%s\"\nAPI_PORT=\"%s\"\nHTTP_PORT=\"%s\"\nDATABASE_URL=\"%s\"\nFRONTEND_URL=\"%s\"\nAPI_BASE_URL=\"%s\"\nNEXT_PUBLIC_SITE_URL=\"%s\"\nNEXT_PUBLIC_API_URL=\"%s\"\nAPI_SERVER_URL=\"%s\"\nFRONTEND_EXPORT_URL=\"%s\"\nREQUEST_BODY_LIMIT=\"%s\"\nPDF_MAX_CONCURRENT=\"%s\"\nACCESS_TOKEN_SECRET=\"%s\"\nREFRESH_TOKEN_SECRET=\"%s\"\nGOOGLE_CLIENT_ID=\"%s\"\nGOOGLE_CLIENT=\"%s\"\nNEXT_PUBLIC_GOOGLE_CLIENT_ID=\"%s\"\nNEXT_PUBLIC_GOOGLE_CLIENT=\"%s\"\nGROQ_API_KEY=\"%s\"\nEXPORT_RENDER_KEY=\"%s\"\nREVALIDATE_SECRET=\"%s\"\n" \
+              "$POSTGRES_DB" "$POSTGRES_USER" "$POSTGRES_PASSWORD" "$DB_PORT" "$API_PORT" "$HTTP_PORT" "$DATABASE_URL" "$FRONTEND_URL" "$API_BASE_URL" "$NEXT_PUBLIC_SITE_URL" "$NEXT_PUBLIC_API_URL" "$API_SERVER_URL" "$FRONTEND_EXPORT_URL" "$REQUEST_BODY_LIMIT" "$PDF_MAX_CONCURRENT" "$ACCESS_TOKEN_SECRET" "$REFRESH_TOKEN_SECRET" "$GOOGLE_CLIENT_ID" "$GOOGLE_CLIENT" "$NEXT_PUBLIC_GOOGLE_CLIENT_ID" "$NEXT_PUBLIC_GOOGLE_CLIENT" "$GROQ_API_KEY" "$EXPORT_RENDER_KEY" "$REVALIDATE_SECRET" > .env
+
+            printf "DATABASE_URL=\"%s\"\nPORT=\"%s\"\nNODE_ENV=\"production\"\nFRONTEND_URL=\"%s\"\nFRONTEND_EXPORT_URL=\"%s\"\nAPI_BASE_URL=\"%s\"\nREQUEST_BODY_LIMIT=\"%s\"\nPDF_MAX_CONCURRENT=\"%s\"\nACCESS_TOKEN_SECRET=\"%s\"\nREFRESH_TOKEN_SECRET=\"%s\"\nGOOGLE_CLIENT_ID=\"%s\"\nGOOGLE_CLIENT=\"%s\"\nGROQ_API_KEY=\"%s\"\nEXPORT_RENDER_KEY=\"%s\"\nREVALIDATE_SECRET=\"%s\"\n" \
+              "$DATABASE_URL" "3001" "$FRONTEND_URL" "$FRONTEND_EXPORT_URL" "$API_BASE_URL" "$REQUEST_BODY_LIMIT" "$PDF_MAX_CONCURRENT" "$ACCESS_TOKEN_SECRET" "$REFRESH_TOKEN_SECRET" "$GOOGLE_CLIENT_ID" "$GOOGLE_CLIENT" "$GROQ_API_KEY" "$EXPORT_RENDER_KEY" "$REVALIDATE_SECRET" > cv-backend/.env
+
+            printf "NODE_ENV=\"production\"\nPORT=\"3000\"\nAPI_SERVER_URL=\"%s\"\nNEXT_PUBLIC_API_URL=\"%s\"\nNEXT_PUBLIC_SITE_URL=\"%s\"\nNEXT_PUBLIC_GOOGLE_CLIENT_ID=\"%s\"\nNEXT_PUBLIC_GOOGLE_CLIENT=\"%s\"\nEXPORT_RENDER_KEY=\"%s\"\nREVALIDATE_SECRET=\"%s\"\n" \
+              "$API_SERVER_URL" "$NEXT_PUBLIC_API_URL" "$NEXT_PUBLIC_SITE_URL" "$NEXT_PUBLIC_GOOGLE_CLIENT_ID" "$NEXT_PUBLIC_GOOGLE_CLIENT" "$EXPORT_RENDER_KEY" "$REVALIDATE_SECRET" > cv-frontend/.env
+
+            docker compose pull db || true
+            docker compose build --pull
+            docker compose up -d --remove-orphans
+
+            docker compose exec -T db sh -c 'until pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do sleep 2; done'
+            docker compose run --rm backend npx prisma migrate deploy
+
+            docker image prune -f
