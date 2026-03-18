@@ -21,13 +21,16 @@ WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
+# ĐÂY LÀ DÒNG QUAN TRỌNG NHẤT VỪA ĐƯỢC THÊM VÀO:
+COPY --from=builder /app/prisma.config.ts ./
 COPY package*.json ./
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x docker-entrypoint.sh
 EXPOSE 3002
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-	CMD node -e "fetch('http://127.0.0.1:3002').then(() => process.exit(0)).catch(() => process.exit(1))"
+    CMD node -e "fetch('http://127.0.0.1:3002').then(() => process.exit(0)).catch(() => process.exit(1))"
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
+# ĐÃ SỬA THÀNH DIST/SRC/MAIN.JS
 CMD ["node", "dist/src/main.js"]
