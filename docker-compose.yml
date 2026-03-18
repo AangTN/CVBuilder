@@ -48,7 +48,7 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-cvonline}}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
       FRONTEND_EXPORT_URL: ${FRONTEND_EXPORT_URL:-http://frontend:3000}
-      API_BASE_URL: ${API_BASE_URL:-http://localhost:3001}
+      API_BASE_URL: ${API_BASE_URL:-http://localhost:3002} # SỬA: 3001 -> 3002
       REQUEST_BODY_LIMIT: ${REQUEST_BODY_LIMIT:-20mb}
       PDF_MAX_CONCURRENT: ${PDF_MAX_CONCURRENT:-3}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
@@ -79,7 +79,8 @@ services:
       context: ./cv-frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+        # Quan trọng: Next.js cần những biến này lúc build
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3002} # SỬA: 3001 -> 3002
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
         NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-}
         NEXT_PUBLIC_GOOGLE_CLIENT: ${NEXT_PUBLIC_GOOGLE_CLIENT:-}
@@ -90,8 +91,8 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      API_SERVER_URL: ${API_SERVER_URL:-http://backend:3001}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+      API_SERVER_URL: ${API_SERVER_URL:-http://backend:3002}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3002}
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
       NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-}
       NEXT_PUBLIC_GOOGLE_CLIENT: ${NEXT_PUBLIC_GOOGLE_CLIENT:-}
@@ -102,6 +103,9 @@ services:
         condition: service_healthy
     ports:
       - "${HTTP_PORT:-3000}:3000"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(()=>process.exit(0)).catch(()=>process.exit(1))"]
       interval: 30s
