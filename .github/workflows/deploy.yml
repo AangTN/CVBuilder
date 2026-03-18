@@ -127,6 +127,7 @@ jobs:
             NEXT_PUBLIC_GOOGLE_CLIENT="$NEXT_PUBLIC_GOOGLE_CLIENT_ID"
 
             DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}"
+            export DATABASE_URL
 
             for required_var in ACCESS_TOKEN_SECRET REFRESH_TOKEN_SECRET EXPORT_RENDER_KEY REVALIDATE_SECRET; do
               eval "required_value=\${$required_var}"
@@ -165,6 +166,7 @@ jobs:
             docker compose up -d --remove-orphans
 
             docker compose exec -T db sh -c 'until pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do sleep 2; done'
-            docker compose exec -T -e DATABASE_URL backend npx prisma migrate deploy
+            docker compose exec -T backend sh -c 'if [ -z "$DATABASE_URL" ]; then echo "DATABASE_URL is empty inside backend container"; exit 1; fi'
+            docker compose exec -T backend npx prisma migrate deploy
 
             docker image prune -f
