@@ -165,6 +165,6 @@ jobs:
             docker compose up -d --remove-orphans
 
             docker compose exec -T db sh -c 'until pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do sleep 2; done'
-            docker compose run --rm -e DATABASE_URL="$DATABASE_URL" backend sh -c 'if [ -z "$DATABASE_URL" ]; then echo "DATABASE_URL is missing inside migration container"; exit 1; fi; npx prisma migrate deploy'
+            docker compose exec backend npx prisma migrate deploy
 
             docker image prune -f
