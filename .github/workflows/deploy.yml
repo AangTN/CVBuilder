@@ -155,11 +155,16 @@ jobs:
             printf "NODE_ENV=production\nPORT=%s\nAPI_SERVER_URL=%s\nNEXT_PUBLIC_API_URL=%s\nNEXT_PUBLIC_SITE_URL=%s\nNEXT_PUBLIC_GOOGLE_CLIENT_ID=%s\nNEXT_PUBLIC_GOOGLE_CLIENT=%s\nEXPORT_RENDER_KEY=%s\nREVALIDATE_SECRET=%s\n" \
               "$HTTP_PORT" "$API_SERVER_URL" "$NEXT_PUBLIC_API_URL" "$NEXT_PUBLIC_SITE_URL" "$NEXT_PUBLIC_GOOGLE_CLIENT_ID" "$NEXT_PUBLIC_GOOGLE_CLIENT" "$EXPORT_RENDER_KEY" "$REVALIDATE_SECRET" > cv-frontend/.env
 
+            if [ -z "$DATABASE_URL" ]; then
+              echo "DATABASE_URL is empty before Prisma migrate deploy"
+              exit 1
+            fi
+
             docker compose pull db || true
             docker compose build --pull
             docker compose up -d --remove-orphans
 
             docker compose exec -T db sh -c 'until pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do sleep 2; done'
-            docker compose run --rm backend npx prisma migrate deploy
+            docker compose run --rm -e DATABASE_URL="$DATABASE_URL" backend sh -c 'if [ -z "$DATABASE_URL" ]; then echo "DATABASE_URL is missing inside migration container"; exit 1; fi; npx prisma migrate deploy'
 
             docker image prune -f
