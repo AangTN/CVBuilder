@@ -30,4 +30,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
 	CMD node -e "fetch('http://127.0.0.1:3002').then(() => process.exit(0)).catch(() => process.exit(1))"
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]
